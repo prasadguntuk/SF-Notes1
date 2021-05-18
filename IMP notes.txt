@@ -1,0 +1,771 @@
+Apex Trigger:
+	An apex trigger is apex code that executed before and after CRUD operations
+
+Types of Triggers
+	1. Before triggers:
+		Are used to update or validate record values before they are saved to the database. update same record.
+		can not perform DML operation.
+	2. After Triggers:
+		Are used to access field values that are set by the system and to effect changes in other records.
+		The records that fire the after trigger are read-only.
+		
+		Note: update the same record in only before trigger not in after trigger because after trigger means
+			already record updated or inserted so its read-only. We can use this record values to access and change 
+			other record values. Like after updated/inserted record depending on record values we can change the status 
+			of other record. update related or other record except current record.
+
+Trigger Events
+	trigger events can be comma separated list of one or more of the following events
+	1. before/after insert
+	2. before/after update
+	3. before/after delete
+	4. after undelete
+	
+Trigger Context variables
+	All triggers define implicit variables that allow developers to access run-time context.
+	1. isInsert
+	2. isUpdate
+	3. isDelete
+	4. isBefore
+	5. isAfter
+	6. isUndelete
+	7. new - Returns a list of the new versions of the sObject records.
+			This sObject list is only available in insert, update, and undelete triggers, and the records can only be modified in before triggers.
+	8. newMap
+	9. old
+	10. oldMap
+	11. size
+	
+	
+with sharing and without sharing:
+
+	Its not with nor without by default.Go through the doc"If a class isn’t declared as either with or without sharing, the current sharing rules remain in effect. This means that the class doesn’t enforce sharing rules except if it acquires sharing rules from another class. For example, if the class is called by another class that has sharing enforced, then sharing is enforced for the called class."
+
+
+Private
+If you declare the access modifier as 'Private', then this class will be known only locally and you cannot access this class outside of that particular piece. By default, classes have this modifier.
+The default access level in Apex is private.
+
+Public
+If you declare the class as 'Public' then this implies that this class is accessible to your organization and your defined namespace. Normally, most of the Apex classes are defined with this keyword.	
+
+Global
+If you declare the class as 'global' then this will be accessible by all apex codes irrespective of your organization. If you have method defined with web service keyword, then you must declare the containing class with global keyword.
+
+With Sharing
+This is a special feature of Apex Classes in Salesforce. When a class is specified with 'With Sharing' keyword then it has following implications: When the class will get executed, it will respect the User's access settings and profile permission. Suppose, User's action has triggered the record update for 30 records, but user has access to only 20 records and 10 records are not accessible. Then, if the class is performing the action to update the records, only 20 records will be updated to which the user has access and rest of 10 records will not be updated. This is also called as the User mode.
+
+Without Sharing
+Even if the User does not have access to 10 records out of 30, all the 30 records will be updated as the Class is running in the System mode, i.e., it has been defined with Without Sharing keyword. This is called the System Mode.
+
+Virtual
+If you use the 'virtual' keyword, then it indicates that this class can be extended and overrides are allowed. If the methods need to be overridden, then the classes should be declared with the virtual keyword.
+
+Abstract
+If you declare the class as 'abstract', then it will only contain the signature of method and not the actual implementation.
+
+==================================================================================
+Lightning datatable
+
+1. want to show relationship data
+– data table not supported for relationship data and it will show blank data
+– create a formula field for that relationship then you only you can show i.e record__r.Name ==> parentName__c
+
+2. want to show url in data table to navigate to parent record
+– right now there is no support to generate lookup url to navigate through record in datatable
+– create a formula field “RecordId__c” : “/”&Id to hold record id. This will used to generate url
+– call this field in SOQL
+– in lighting component where you are creating ‘Columns’ use as :
+component.set(‘v.columns’, [
+{label: ‘Name’, fieldName: ‘Name’, editable:’true’, type: ‘text’},
+{label: ‘Custom Field’, fieldName: ‘My_Custom_Field__c’, editable:’true’, type: ‘text’},
+{label: ‘Code’, fieldName: ‘RecordId__c’, type: ‘url’ , typeAttributes: { label: { fieldName: ‘parentName__c’ }, target: ‘_blank’ }}
+]);
+
+
+I have looked at the pipeline for Winter19 release, I do not see this feature listed there. So I guess, they are not focusing on this part for now. But not sure, they might surprise us 
+
+draftValues is attribute defined in datatable itself which returns all the edited record list. You do not have to declare is specifically.
+
+Deletion of record is not supported.
+
+Is there any support for creating new records from a datatable?
+It’s not supported till summer 18. Let’s see if future release gives this flexibility.
+
+For now, you can use another component along with your datatable component, and use LDS to create a new record. Once the record is created, refresh the data table again to see the new record.
+
+Yes, LDS can be used to save the data, however, the limitation is that LDS only works on single record id. So if you want to perform save operation on multiple records like in this example, you have to use your own apex controller.
+
+Is it possible to edit Picklist fields in lightning:dataTable?
+Picklist field can be rendered as text type and can be edited using plain text. The actual drop-down is still not supported.
+
+
+============================================
+Use Lightning Components in Visualforce Pages
+
+Add Aura components to your Visualforce pages to combine features you’ve built using both solutions. 
+Implement new functionality using Aura components and then use it with existing Visualforce pages.
+Important
+Lightning Components for Visualforce is based on Lightning Out, a powerful and flexible feature that lets you embed Aura components into 
+almost any web page. When used with Visualforce, some of the details become simpler. For example, you don’t need to deal with authentication, 
+and you don’t need to configure a Connected App.
+
+In other ways using Lightning Components for Visualforce is just like using Lightning Out. Refer to the Lightning Out section of this guide for 
+additional details.
+
+There are three steps to add Aura components to a Visualforce page.
+Add the Lightning Components for Visualforce JavaScript library to your Visualforce page using the <apex:includeLightning/> component.
+Create and reference a Lightning app that declares your component dependencies.
+Write a JavaScript function that creates the component on the page using $Lightning.createComponent().
+Add the Lightning Components for Visualforce JavaScript Library
+Add <apex:includeLightning/> at the beginning of your page. This component loads the JavaScript 
+file used by Lightning Components for Visualforce.
+
+Create and Reference a Lightning Dependency App
+To use Lightning Components for Visualforce, define component dependencies by referencing a 
+Lightning dependency app. This app is globally accessible and extends ltng:outApp. 
+The app declares dependencies on any Lightning definitions (like components) that it uses.
+
+Here’s an example of a Lightning app named lcvfTest.app. The app uses the <aura:dependency> tag to indicate that it uses the standard Lightning component, lightning:button.
+1
+<aura:application access="GLOBAL" extends="ltng:outApp">
+2
+    <aura:dependency resource="lightning:button"/>
+3
+</aura:application>
+Note
+Extending from ltng:outApp adds SLDS resources to the page to allow your Lightning components to be styled with the Salesforce 
+Lightning Design System (SLDS). If you don’t want SLDS resources added to the page, extend from ltng:outAppUnstyled instead.
+
+To reference this app on your page, use the following JavaScript code, where theNamespace is the namespace prefix for the app. That is, either your org’s namespace, or the namespace of the managed package that provides the app.
+1
+$Lightning.use("theNamespace:lcvfTest", function() {});
+If the app is defined in your org (that is, not in a managed package), you can use the default “c” namespace instead, as shown in the next example. If your org doesn’t have a namespace defined, you must use the default namespace.
+For further details about creating a Lightning dependency app, see Lightning Out Dependencies.
+
+Creating a Component on a Page
+Finally, add your top-level component to a page using $Lightning.createComponent(String type, Object attributes, String domLocator, function callback). This function is similar to $A.createComponent(), but includes an additional parameter, domLocator, which specifies the DOM element where you want the component inserted.
+
+Let’s look at a sample Visualforce page that creates a lightning:button using the lcvfTest.app from the previous example.
+01
+<apex:page>
+02
+    <apex:includeLightning />
+03
+ 
+04
+    <div id="lightning" />
+05
+ 
+06
+    <script>
+07
+        $Lightning.use("c:lcvfTest", function() {
+08
+          $Lightning.createComponent("lightning:button",
+09
+              { label : "Press Me!" },
+10
+              "lightning",
+11
+              function(cmp) {
+12
+                console.log("button was created");
+13
+                // do some stuff
+14
+              }
+15
+          );
+16
+        });
+17
+    </script>
+18
+</apex:page>
+The $Lightning.createComponent() call creates a button with a “Press Me!” label. The button is inserted in a DOM element with the ID “lightning”. After the button is added and active on the page, the callback function is invoked and executes a console.log() statement. The callback receives the component created as its only argument. In this simple example, the button isn't configured to do anything.
+
+Important
+dependency app.
+You can call $Lightning.use() multiple times on a page, but all calls must reference the same Lightning 
+
+For further details about using $Lightning.use() and $Lightning.createComponent(), see Lightning Out Markup.
+
+Limitations
+If a Visualforce page contains an Aura component, you can’t render the Visualforce page as a PDF.
+
+========================================================================
+Difference between Helper.js and controller.js in lightning component
+How to call one function from another function in controller.js
+why lightning component if vf is there
+should I call method direct in Helper.js ==> Unable to find action 'handleClick' on the controller of c:TestComponent 
+Lightning Data Service
+can you able to use external js file in lightning component and how
+==> <ltng:require scripts="{!$Resource.resourceName}"
+    afterScriptsLoaded="{!c.afterScriptsLoaded}" />
+	
+	<ltng:require styles="{!$Resource.resourceName}" />
+
+	scripts="{!join(',', 
+    $Resource.jsLibraries + '/jsLibOne.js',  	
+    $Resource.jsLibraries + '/jsLibTwo.js')}"
+	
+How to call other component method from component controller
+Types of events
+how to pass parameter from parent to child component
+how to pass parameter from child to parent component
+
+
+============================================================
+Validation Rules, Process Builder, Flow Builder, Approval process, Workflow rules, Roll-up summary field, Formula field, 
+Cross object formula field, Master details, Lookup Relationship, Picklist Field, Global picklist(Picklist Value set)
+Actions, Record Types, Page Layouts, Profile, Role, Permission set, Record level security, Field level security,
+Org level security, Custom metadata types, Custom settings, Custom Labels, Email templates, Static resources,
+Changes sets, Data loader, Data import wizard, External objects, Platform events, API, Queues, Public groups, List Views
+Web to Lead, Web to case, Lead Assignment rules, Lookup filters, Order of execution, Governer Limits
+View State, Transient keyword, Dynamic apex, apex:includeLightning, apex:slds, lightningStylesheets="true"
+LimitExceptions, serialization and deserialization, Apex sharing, Access Levels, Lightning connect, Reports and Dashboards,
+Bucket fields, Cross filters, Static SOQL, Dynamic SOQL, WSDL, Audit Trail, 15 and 18 Digit record Ids, Action Support,
+Action Function, wrapper class, Transfer record setting in profile, setScale(), scope of the static keyword,
+property in apex getter/setter, Global variables
+
+External Objects
+	Tables in external systems map to external objects in Salesforce, combining all your data and content for users in your org.
+	External objects are similar to custom objects, but external object record data is stored outside your Salesforce organization
+	 Instead of copying the data into your org, you can use external objects to access the data in real time via web service callouts.
+	 an external object named “ExtraLogInfo” in the Salesforce user interface is seen as ExtraLogInfo__x in that organization's WSDL.
+	 External objects support standard lookup relationships, which use the 18-character Salesforce record IDs to associate related records with each other.
+
+Lightning app builder
+Apex debugger, Apex triggers, Apex test execution, Platform cache, Remote access, Visualforce components, Visualforce pages
+Lightning components
+Apex flex queue, Apex jobs, Scheduled jobs
+Comapny settings
+My domain, Named credentials, External Id, SOAP/REST Integrations
+Sales Cloud
+Service Cloud
+AppExchange
+Communities
+SOQL
+SOSL
+Sharing and without sharing class
+System mode and user mode
+Escalation rules
+Standard controller
+custom controller
+render and rerender 
+Translation Workbench
+User Interface settings
+=========================================================
+- max we can use 10 field dependency in VF page
+- max size of pdf generated on VF renderAs 15MB
+- we can add up to 20 reports in a single dashboard
+- Audit trail function is helpful in knowing the information or track all the recent setup changes that the 
+	administrator does to the organization. It can store last 6 months data.
+- size of static resorce for an org is 250 MB.
+- Single Apex transaction to make a maximum of 100 callouts to an API call.
+- Test.setpage() It is used to set the context to current page, normally used for testing the visual force controller.
+
+=========================================================
+Apex
+Controller and extensions
+Triggers
+Batch processes
+API's
+Custom responsive UI VF pages
+VF Components
+Javascript/jQuery/Bootstrap
+SF Deployment/Packaging using Metadata API, ChangeSet and Ant
+REST API
+SOAP Web services
+S-controls
+SOQL
+SOSL
+Process Automation
+Security Configuration
+Data Model
+Reports and Dashboards
+Communities and Force.com sites
+Single sign On
+End to end functionality awareness of Sales and Service Cloud
+Best Practices in VF/Apex
+Governer Limits
+Basics of Marketing cloud
+Lightning framework and SLDS
+Team management 
+Translating functional requirements
+Waterfall and Agile
+Customer facing skills
+
+
+Inbound and Outbound Callouts
+Dynamic Apex
+=============================================================================================
+Asynchronous Process
+	What?
+	Asynchronous operation means that a process operating independently of other process
+	
+	When?
+	Asynchronous
+		- Actions that will not block the transaction or process 
+		(do not need to wait for others process or its not depends on other)
+		- Duration is not priority
+		- Higher governer limits
+	Synchronous 
+		- Quick and Immediate actions (really depends on other process)
+		- Transactions are immediate and serialization
+		- Normal governer limits
+	
+	Why?
+	Benefits
+		- User Efficiency
+		- Resource Efficiency
+		- Scalability
+		- Avoid Governer Limits
+		- Mixed DMLs
+		- Long Running operations
+		- Fairness of processing
+		
+	Mixed DMLs
+		Trying to Insert or update setup and non setup objects in same transaction
+		setup Objects - User, Group
+		Non setup Objects - all standard and custom objects (Account, contact....)
+		
+		public class MixedDMLFuture {
+			public static void useFutureMethod() {
+				// First DML operation
+				Account a = new Account(Name='Acme');
+				insert a;
+				
+				// This next operation (insert a user with a role) 
+				// can't be mixed with the previous insert unless 
+				// it is within a future method. 
+				// Call future method to insert a user with a role.
+				Util.insertUserWithRole(
+					'mruiz@awcomputing.com', 'mruiz', 
+					'mruiz@awcomputing.com', 'Ruiz');        
+			}
+		}
+		
+		public class Util {
+			@future
+			public static void insertUserWithRole(
+				String uname, String al, String em, String lname) {
+
+				Profile p = [SELECT Id FROM Profile WHERE Name='Standard User'];
+				UserRole r = [SELECT Id FROM UserRole WHERE Name='COO'];
+				// Create new user with a non-null user role ID 
+				User u = new User(alias = al, email=em, 
+					emailencodingkey='UTF-8', lastname=lname, 
+					languagelocalekey='en_US', 
+					localesidkey='en_US', profileid = p.Id, userroleid = r.Id,
+					timezonesidkey='America/Los_Angeles', 
+					username=uname);
+				insert u;
+			}
+		}
+
+	Use-Case
+		- Integrations
+		- Complex Calculations (Roll-up summarys on lookup fileds)
+		- Reports Runs
+		- Data Migrations
+	
+	How?
+	Asynchronous in salesforce
+		- Schedule
+		- Batch jobs
+		- Queues
+		- Future
+		- Change Data Capture - Apex Triggers (Summer 19)
+		- Platform Events - Event Based
+		- Continuations (UI)
+		
+	Using @future annotation
+		- A set it and forget it method
+		- Call it and the async job is launched
+		- No ability to monitor the job
+		- Can not chain @future calls
+		- A public static method, decorated with @future
+		- Arguments: Primitives(Integers, strings...), Collection of primitives(List,map,set), 
+		Not sObjects or apex objects
+		- You can use JSON.serialize() and pass in a string
+		- returns void
+	Example
+		public class FutureTaskCreator{
+			@future
+			public static void createTask(String recId){
+				Task task = new Task();
+				task.Subject = 'Creating from future';
+				task.WhatId = recId;
+				insert task;
+			}
+		}
+		//calling
+		FutureTaskCreator.createTask(acc.Id);
+		
+	Using Queueable class
+		- A class and method can be added to the queue to be executed
+		- its monitorable and abortable
+		- Its chainable
+		- class that implements the Queueable interface
+		- includes an execute method that accepts only a QueueableContext parameters
+		- The execute method can access instance properties for the class 
+		- Returns void
+		- launch by calling System.enqueueJob(cls) with an instance of class.
+		- Return an AsyncApexJob Id
+	
+	Example
+		public class QueueableTaskCreator implements Queueable{
+			private String recId;
+			public QueueableTaskCreator(String recId){
+				this.recId = recId;
+			}
+			
+			public void execute(QueueableContext context){
+				Task task = new Task();
+				task.Subject = 'Creating from Queueable';
+				task.WhatId = recId;
+				insert task;
+			}
+		}
+		
+		//calling 
+		QueueableTaskCreator qJob = new QueueableTaskCreator(acc.Id);
+		Id jobId = System.enqueueJob(qJob);
+		
+	Batch class
+		- process large number of records
+		- Doing more work than can be done in single transaction
+		- its monitorable and abortable
+		- A global class that implements Database.Batchable interface
+		- includes:
+			Start method - identifies the scope (list of data to be processed)
+			execute method - process the subset of the scoped records
+			finish method - does any post jobs 
+		- Additional interface
+			Database.Stateful
+			Database.AllowsCallouts
+		- Launch by calling Database.executeBatch(cls) with instance of class and optional 
+		scope size
+		- default scope size 200
+		- max scope size 2000
+		- returns AsyncApexJobId
+		
+		global class MyBatchClass implements Database.Batchable<sObject> {
+			global (Database.QueryLocator | Iterable<sObject>) start(Database.BatchableContext bc) {
+				// collect the batches of records or objects to be passed to execute
+			}
+			global void execute(Database.BatchableContext bc, List<P> records){
+				// process each batch of records
+			}    
+			global void finish(Database.BatchableContext bc){
+				// execute any post-processing operations
+			}    
+		}
+		
+		MyBatchClass myBatchObject = new MyBatchClass(); 
+		Id batchId = Database.executeBatch(myBatchObject);
+		OR
+		Id batchId = Database.executeBatch(myBatchObject, 100);
+		
+		AsyncApexJob job = [SELECT Id, Status, JobItemsProcessed, TotalJobItems, NumberOfErrors FROM AsyncApexJob WHERE ID = :batchId ];
+	
+	
+	Schedulable class
+		- global class implements schedulable interface
+		- include execute method
+		- calling - System.Schedule('job name', cron expression, cls)
+		- returns cronTriggerId
+		- can also scheduled from salesforce ui
+		
+
+Salesforce Sales Cloud is a customer relationship management (CRM) platform designed to support sales, marketing and customer support in both business-to-business (B2B) and business-to-customer (B2C) contexts.
+
+Sales Cloud is a fully customizable product that brings all the customer information together in an integrated platform that incorporates marketing, lead generation, sales, customer service and business analytics and provides access to thousands of applications through the AppExchange. 		
+
+"Sales Cloud" refers to the "sales" module in salesforce.com. It includes Leads, Accounts, Contacts, Contracts, Opportunities, Products, Pricebooks, Quotes, and Campaigns (limits apply). It includes features such as Web-to-lead to support online lead capture, with auto-response rules. It is designed to be a start-to-end setup for the entire sales process; you use this to help generate revenue.
+
+Salesforce Service Cloud is a customer relationship management (CRM) platform for customer service and support, based on the company's CRM software for sales professionals.
+
+Service Cloud allows users to automate service processes, streamline workflows and find key articles, topics and experts to support the agent. The purpose is to foster one-to-one marketing relationships with every customer, across multiple channels and on any device.
+
+Service cloud can "listen" and respond to customers across a variety of social platforms and automatically route cases to the appropriate agent. Social customer service is integrated with the Salesforce Customer Success Platform, which allows the social team to gather a comprehensive picture of the customer to inform responses.
+
+Service for Apps makes it possible to embed customer support software into applications. In-app mobile support can include live agent video chat, screen sharing and on-screen guided assistance. The software is also integrated with Salesforce's Community Cloud, which provides more communication channels for agents and customers
+ 
+"Service Cloud" refers to the "service" (as in "customer service") module in salesforce.com. It includes Accounts, Contacts, Cases, and Solutions. It also encompasses features such as the Public Knowledge Base, Web-to-case, Call Center, and the Self-Service Portal, as well as customer service automation (e.g. escalation rules, assignment rules). It is designed to allow you to support past, current, and future clients' requests for assistance with a product, service, billing, etcetra; you use this to help make people happy.
+
+
+
+Process Builder – Cons:
+Below are some limitations to using Process Builder and the advantages of using Apex triggers to address these particular scenarios:
+
+- Process Builders cannot handle before DML It executes after a record has been created or updated. 
+	Whereas Apex triggers can handle both before and after DML operations.
+- Process Builder cannot handle delete and undelete DML. Whereas Apex triggers can handle all DML operations.
+- An error reported in Process Builder is more generic which makes it difficult to find the origin of the error. 
+ With Apex triggers, exception handling can be made more specific.
+- It is all or none in case of Process Builder failure. But with Apex triggers partial success is possible.
+- Whenever a particular use case is not possible using Process Builder, consider using Apex triggers. For example, consider the below use case:-
+
+A custom field on a Parent object which is based on the field related to the max (roll up) among the child records. 
+Since roll-up functionality involves insert, update, delete and undelete operations, using an Apex trigger is the best option in this scenario.
+
+
+Editing: User can’t edit process once it has been activated.Therefore much like with flow, a new process needs to be created by cloning the 
+initial process and making modifications to that cloned records.
+
+Validation: Processes DO NOT  trigger Validation rule and can, therefore, invalidate data.
+
+Deletion: The inactive process can’t be deleted for at least 12 hours after inactivation and do not appear in the Recycle Bin
+
+Error Message: You can’t specify error messages when creating a process that doesn’t trigger as you can with flow or validation rules.
+
+Formula help: When utilizing formula in criteria, there is no function help preview next to the syntax
+
+Syntax: Pick-list fields are evaluated as text fields in process builder so that they won’t support any pick list formulas like ISCHANGED or ISNEW.
+
+
+Process Builder is a newer tool for admins which is even more powerful. In addition to everything a workflow can do 
+(except for sending outbound messages), you can:
+
+Create a record (not just Tasks!)
+Update related records
+Launch a Quick Action
+Post to Chatter
+Launch a Flow
+Call Apex code
+Submit for approval
+Invoke another process
+
+
+======================================================================================
+Inbound call means call from external system to salesforce
+Outbound call means call from salesforce to external system
+
+Inbound Web Service:
+Inbound web service is when Salesforce exposes SOAP/REST web service, and any external/third party application consume it to 
+get data from your Salesforce org. It is an Inbound call to Salesforce, but outbound call to the external system. Here, Salesforce 
+is the publisher and external system is the consumer of web services.
+
+Outbound Web Service:
+Outbound web service is when Salesforce consume any external/third party application web service, a call needs to send to the external system. 
+It is an Inbound call to the external system, but outbound call to Salesforce. Here, external system is the publisher of web services and 
+Salesforce is the consumer.
+
+===================================================================
+APIs
+
+API Name	Protocol	Data Format	  Communication
+
+REST API	REST	    JSON, XML	  Synchronous
+
+SOAP API	SOAP       (WSDL)XML	  Synchronous
+Chatter REST API	REST	JSON, XML	Synchronous (photos are processed asynchronously)
+User Interface API	REST	JSON	Synchronous
+Analytics REST API	REST	JSON, XML	Synchronous
+Bulk API	REST	CSV, JSON, XML	Asynchronous
+Metadata API	SOAP (WSDL)	XML	Asynchronous
+Streaming API	Bayeux	JSON	Asynchronous (stream of data)
+Apex REST API	REST	JSON, XML, Custom	Synchronous
+Apex SOAP API	SOAP (WSDL)	XML	Synchronous
+Tooling API	REST or SOAP (WSDL)	JSON, XML, Custom	Synchronous
+
+
+There are two commonly used web service:
+
+1. SOAP(Simple Object Access Protocol)
+SOAP is a web service architecture, which specifies the basic rules to be considered while designing web service platforms.
+It works over with HTTP, HTTPS, SMTP, XMPP.
+It works with WSDL.
+It is based on standard XML format.
+SOAP Supports data in the form of XML only
+SOAP API preferred for services within the enterprise in any language that supports Web services.
+
+2. REST (Representational State Transfer)
+REST is another architectural pattern, an alternative to SOAP.
+It works over with HTTP and HTTPS.
+It works with GET, POST, PUT and DELETE verbs to perform CRUD operations.
+It is based on URI.
+REST Supports both XML and JSON format.
+REST API preferred for services that are exposed as public APIs and mobile, since JSON being Lighter the app runs smoother and faster.
+
+Inbound webservice is something which salesforce org will consume. There could be webservices published by some other 3rd party tool. 
+You can import that webservice and salesforce can use that to call methods from 3rd party tool.
+
+Oubound Webservice is something that you publish from salesforce org and 3rd party tools consume it to get data/ record from your salesforce org.
+
+https://www.sfdc99.com/2018/01/22/workflow-process-builder-flow-apex/  https://www.adhiman.com/process-builder-vs-apex-triggers-choosing-between-automation-tools/  
+http://www.infallibletechie.com/2017/08/simple-inbound-rest-api-using-apex-in.html
+http://www.infallibletechie.com/2017/08/simple-outbound-rest-api-with-xml.html
+
+Lightning:RecordEditForm
+
+Serialization is the process of encoding data into JSON format (like converting a Python list to JSON).
+
+Deserialization is the process of decoding JSON data back into native objects you can work with (like reading JSON data into a Python list).
+================================================================
+
+Salesforce Integrations
+REST/SOAP web services
+JSON
+Apex
+Governer limits
+
+================================================================
+Lightning DataTable
+lightning:RecordForm
+lightning:RecordEditForm
+lightning:RecordViewForm
+force:RecordData
+
+
+SFDC Sales Cloud, SFDC Service Cloud, Apex, Visualforce page development, SOQL, Lightening component development, Integrations
+
+-What are the different types of Accounts in salesforce?
+	1. Personal Accounts :
+	Associated with a single person and Person name will be taken as the primary consideration
+
+	2. Business Accounts:
+	The company name will be taken into primary consideration
+- How to Rename the tab?
+	Tab name is derived from the Plural label field on the custom object. In order to rename, go to the corresponding object 
+	detail page and rename the plural label.
+-What is the architecture of the salesforce?
+	Salesforce follows MVC –Model, View and Controller architecture.
+
+	View: stands for the user interface (Apps, Tabs, Page Layouts, Fields and Record Types)
+
+	Controller: stands for Business Logic (Save, Edit, New, Cancel and Delete – what action or logic to perform on click of these buttons 
+	is provided in Controller)
+
+	Model:  It is the Database, which stores Schema (Meta-Data (Data about Data) –> Apps, Tabs, subjects, fields, Apex Classes, Visualforce pages, etc…) 
+	and Instance (Records)
+-What is a different kind of reports in Salesforce?
+	1. Tabular: Tabular reports are similar to spreadsheets, consist of an ordered set of fields in columns with each matching record listed in a row. 
+	Tabular reports are best for creating a list of records with a single grand total. These reports can’t be used in Dashboards unless the number 
+	of rows is specified.
+
+	2. Summary Reports: Summary Reports are similar to tabular reports, but also allow users to group rows of data, view subtotals and create charts. 
+	These can be used as source reports for dashboards.
+
+	3. Matrix Reports: Matrix Reports are very similar to Summary Reports but allow you to group and summarize data by both rows and columns. 
+	These reports can be used as source reports for dashboards
+
+	4. Joined Reports:  Joined Reports let you create multiple report blocks that provide different views of your data. 
+	Each block act like a sub-report with its own fields, columns, sorting and filtering. A joined report can even contain data from different report types.
+	
+-What is the use of Salesforce.com sites?
+	Answer: Force.com enables you to create public websites and actions that are 
+	directly integrated with your Salesforce.com organization without requiring users to 
+	log in with a username and password. Any information stored in the organization can be 
+	publicly exposed through a branded URL. Sites are hosted on Force.com platform and 
+	built on visual force pages.
+
+-What is the difference between Lookup and Master-Detail relationship?
+	Master-Detail
+	1. Cascade record deletion
+	2. Child record must have a parent
+	3. Cascade record-level security
+	4. Standard Object can not be on the detail side of Master Detail
+	5. Roll-up summary fields on the parent object
+	6. Master-Detail relationship field is required on the page layout of the detail record
+
+	Lookup
+	1. This is optional, no parent requirement
+	2. No impact on record security
+	3. Roll-up summary fields cannot be established
+	4. Lookup relationship is not automatically required
+-What is the difference between WhoId and WhatId in the Data Model of Task?
+	Who Id refers to people things. So that would be typically a Lead ID or a Contact ID
+
+	what refers to object type things, That would typically be an Account Id or an Opportunity Id.
+
+-What are the different Salesforce.com editions?
+	1. Personal Edition
+	2. Contact Manager Edition
+	3. Group Edition
+	4. Professional Edition
+	5. Enterprise Edition
+	6. Unlimited and Performance Edition
+	7. Developer Edition
+-What are inner classes in Salesforce?
+	Inner Classes are classes defined within another class. We can only have inner classes 1 level deep. We don’t have to use an access 
+	modifier in the declaration of an inner class since the default value is a private
+-What is the difference between Force.com and Salesforce.com?
+	Force.com is a cloud computing platform where the developers build multi-tenant applications.
+	Salesforce.com is a cloud computing platform, it contains only standard objects. Salesforce.com is hosted on force.com platform. 
+	
+- Why users can’t be deleted from salesforce.com?
+	In order to maintain data integrity in salesforce and historical records of who did what and when, and to support audit process, 
+	the Users are not allowed to delete in salesforce but can be deactivated.
+
+- I have a Standard Controller and Controller Extension. You can write all that logic in Controller Extension which can be written in Custom Controller. 
+	Also, both Controller Extenstion and Custom controller execute in System Mode. So Why do we need Custom Controller?
+	1st point Controller Extension cant exists on its own. It has to be implemented on a Standard Controller or a custom controller.
+	So keeping the above point in mind, let’s say certain methods needs to be executed in User Mode and certain in System Mode. 
+	In this scenario, it makes absolute sense to User Standard Controller with Custom Extension. Where in using Standard Controller provides 
+	all pre-existing features of Force.com platform.
+	But note that When we use Standard Controller All the Sharing rules, permissions of a user are respected.
+	So if this what we wanted then we should go for implementation of this sort.
+
+-List things that can be customized on page layouts?
+	We can customize different things on page layout like Fields, Buttons, Custom Links and Related Lists. We can also create sections.
+	
+- "You have uncommitted work pending. Please commit or rollback before calling out" will occur anytime DML is performed before a callout in the same transaction.
+https://salesforceenthusiast.com/Pages/extras.php#:~:text=The%20infamous%20Salesforce%20exception%20%22You,callout%20in%20the%20same%20transaction.
+
+
+---------------------------------Deloitte---------------------------------
+
+- Below json need to convert apex response wrapper class
+{
+"CompanyName":
+	{
+	"name":"Deloitte",
+	"Employees":
+		[{
+			"name":"Prasad",
+			"Salary":2500000
+		}]
+	}
+}
+=>
+//
+// Generated by JSON2Apex http://json2apex.herokuapp.com/
+//
+
+public class JSON2Apex {
+
+	public class CompanyName {
+		public String name;
+		public List<Employees> Employees;
+	}
+
+	public CompanyName CompanyName;
+
+	public class Employees {
+		public String name;
+		public Integer Salary;
+	}
+
+	
+	public static JSON2Apex parse(String json) {
+		return (JSON2Apex) System.JSON.deserialize(json, JSON2Apex.class);
+	}
+}																																																																																																																																																																																																																																																																																																																																																																				`
+
+- How to stop propagation in lightning components --> stopPropagation()
+
+- OWD setting for Account is public read/write and profile dont have access to Account. Can he able to see records --> No atleas need read permission on profile level
+- duplicate check with combination of firstName,LastName and MiddleName how do you will do it --> using formula field with workflow rules/process builder
+
+- B is the child of A amd C is the child of B they dont have any relationship between them by using external id how can you display records on lightning 
+  component show all B records related to A and C records related to B. what would be wrapper class?
+-   
+
+Connected app -  
+It is a framework that enables an external application to integrate with Salesforce using APIs and standard protocols, 
+such as Security Assertion Markup Language (SAML), OAuth, and OpenID Connect. Connected apps use these protocols to authorize, 
+authenticate, and provide single sign-on (SSO) for external apps.

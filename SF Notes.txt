@@ -1,0 +1,1687 @@
+1. Without Sharing - 
+	- Not consider FLS and Object level permissions.
+	- Consider FLS as editable hightest level if even don't have permission.
+	- Consider Object permission as hightest level if even don't have permission.
+	- Consider OWD as hightest level permission i.e. read/write permission.
+	
+2. With Sharing - 
+	- Not consider FLS and Object level permissions only consider sharing rules.
+	- Consider FLS as editable hightest level if even don't have permission.
+	- Consider Object permission as hightest level if even don't have permission.
+	- Consider Sharing rules i.e. OWD, role hierarchy, sharing rules, manual sharing, team sharing, territory sharing.
+
+3. Inner classes do not inherit the sharing setting from their container class.
+
+4. The sharing setting of the class where the method is defined is applied, not of the class where the method is called.
+	For example, if a method is defined in a class declared with with sharing is called by a class declared with without sharing, 
+	the method executes with sharing rules enforced.
+
+5. Classes inherit this setting from a parent class when one class extends or implements another.
+
+-------------------------------------------------------------------------------------------------
+Team Sharing - Open up access, Team is a group of user work all together. There are total 3 teams.
+			 - Account Team, Opportunity Team, Case Team.
+			 
+-------------------------------------------------------------------------------------------------
+List Views - Does not give any extra record access. We can create list with spefic filters and fields.
+
+-------------------------------------------------------------------------------------------------
+Report and Dashboard Folder Access - Accessing those Reports and Dashboards does not give extra record access.
+								   - The only way that a user can have extra access, is if a dashboard is configured to be viewed by
+								     another user who has extra access than that user.
+								   - We can share reports and dashboards only by through folders.
+									 
+--------------------------------------------------------------------------------------------------
+Roles and Role Hierarchy - Users can access the data of all the users directly below them
+						   in role hierarchy if Grant Access Using Hierarchies enabled.
+						 - This access applies to record owned by users, as well as record shared with them.
+						 - 2 users at the same role, will not see each other's records if the OWD is set to Private.
+						 
+=============================================================================
+
+
+	trigger countTrigger on Contact(After Insert, After Update, After Delete, After Undelete){
+		
+		List<Contact> conList = new List<Contact>();
+		if(triger.isDelete){
+			conList = trigger.old;
+		}else{
+			conList = triger.new;
+		}
+		
+		Set<Id> accIdSet = new Set<Id>();
+		for(Contact con: conList){
+			accIdSet.add(con.AccountId);
+		}
+		
+		List<Account> acctList = new List<Account>();
+		List<Account> acctToUpdate = new List<Account>();
+		acctList = [Select Id, Field_On_Account, (Select Id, Field_On_Contact from Contacts) From Account where Id IN :accIdSet];
+		for(Account acc: acctList){
+			List<Contact> c = acc.Contacts;
+			acc.Field_On_Account = c.size();
+			acctToUpdate.add(acc);
+		}
+		update acctToUpdate;
+		
+	}
+
+
+=====================================================================
+trigger ProcessContact on Contact (after insert, after update, after delete, after undelete) {
+    List<Contact> conList = new List<Contact>();
+    
+    if(Trigger.isDelete)
+        conList = Trigger.old;
+    else
+        conList = Trigger.new;
+    
+    Set<Id> accIds = new Set<Id>();
+    for(Contact con: conList){
+        accIds.add(con.AccountId);    
+    }
+    
+    Map<Id,Contact> contactsMap = new Map<Id,Contact>([Select Id, AccountId, Amount__c From Contact where AccountId IN :accIds]);
+    System.debug('contactsMap--'+contactsMap);
+    Map<Id,Account> accountsMap = new Map<Id,Account>([Select Id, Amount__c From Account Where Id IN : accIds]);
+    System.debug('accountsMap--'+accountsMap);
+   
+    
+    //own logic any one can write
+    for(Account acc: accountsMap.values()){
+        Decimal Totalvalue = 0;
+        for(Contact con: contactsMap.values()){
+            if(con.AccountId == acc.Id && con.Amount__c != null){
+               Totalvalue += con.Amount__c;  
+            }
+        }
+        acc.Amount__c = Totalvalue;
+    }
+    
+    if(accountsMap.values().size() > 0){
+        update accountsMap.values();
+    }    
+}
+
+==================================================================
+trigger CountOfContacts on Contact (after insert, after update, after delete, after undelete) {
+    Contact[] cons;
+    If(Trigger.isDelete)
+    {
+        cons=Trigger.old;
+        system.debug('cons Old---'+cons);
+    }
+    else
+    {
+        cons=Trigger.new;
+        system.debug('cons new---'+cons);
+    }
+    Set<id>accids=new Set<id>();
+    for(Contact con:cons)
+    {
+        If(Trigger.isUpdate){
+            if(Trigger.oldMap.get(con.Id).AccountId != con.AccountId){
+                accids.add(Trigger.oldMap.get(con.Id).AccountId);
+            }
+        }else{
+            accids.add(con.AccountId);
+        }
+    }
+    system.debug('accids---'+accids);
+    
+    Map<id, Contact> contactsforAccounts=new Map<id, Contact>([select id, AccountId from contact where AccountId in :accids]);
+    Map<id, Account> accountstoupdate=new Map<id, Account>([select Id,Number_of_Contacts__c from Account where Id in :accids]);
+   system.debug('contactsforAccounts---'+contactsforAccounts.values());
+    system.debug('accountstoupdate---'+accountstoupdate.values());
+    for(Account acc: accountstoupdate.values())
+    {
+        Set<id> conids=new Set<id>();
+        for(Contact con: contactsforAccounts.values())
+        {
+            if(con.AccountId==acc.id)
+                conids.add(con.Id);
+        }
+        system.debug('conids---'+conids.size());
+        if(acc.Number_of_Contacts__c != conids.size()){
+            acc.Number_of_Contacts__c=conids.size();
+            system.debug('conidskjndlfjslf---'+conids);
+        }
+    }
+    if(accountstoupdate.values().size() > 0){
+        system.debug('accountstoupdateSize---'+accountstoupdate.values().size());
+    	update accountstoupdate.values();    
+    }
+    
+}
+===========================================================================
+OAuth
+Connected App
+	- It is a framework that enables an extenal application to integrate with
+		salesforce using APIs and standard protocols, such as SAML, OAuth and OpenID Connect.
+	- To authenticate, authorize and provide single sign-on (SSO) for extenal apps.
+	- when to use Connected app:
+		-Access data with API Integration
+			- to request access salesforce data on behalf of extenal apps. 
+		-Integrate service provider with salesforce org
+			- When salesforce as Idetity provider (SSO)
+		-Manage access to third party apps
+			- what kind of data can access that can control, 
+				manage access level to third party app
+		-Provide authorization for external api
+	
+	- Oauth scope - can control access level, what kind of data
+	- By using Client key and Client Secret extenal app access OAuth token
+	- Connected app in server
+
+OAuth
+	- It is an open protocol that authorizes a client applications to access data from
+		a protected resource throught the exchange of tokens.
+
+---------------------------------------------------------------------------------
+Service Cloud
+
+Creating Case Assignment Rules
+	- You can assign case to users or queues
+	- Only one assignment rule active at time
+		- We can have multiple rule criteries 
+	- You can update case ownership with user or queue
+	- On case - Support Setting - default case owner 
+	
+Creating a Web-to-Case Form
+	- Choose the fields from the available fields column
+	- Choose a "thank you" return URL
+	- Click generate button to create the form HTML
+	
+Creating an Email-to-Case Address
+	-
+
+
+SOQL upwards and downwards traversal example
+	SELECT Id, Name, Account.Description, CreatedBy.Name,
+	   (SELECT Amount FROM Opportunities WHERE Amount > 100),
+	   (SELECT Name FROM Best_Friends__r WHERE Phone != null)
+	   FROM Contact
+	   WHERE Account.Secret_Notes__c LIKE '%Tacos%'
+		   AND (Sex__c = 'Male' OR Likes_Ice_Cream__c = true)
+			
+===========================================================================
+
+- What’s the limit in SOQL for queueable?
+- Have you heard about offset? How will you handle 50K records through offset?
+- Tell me about your project where you used batch theme?
+can we call future method from queuable
+if start method failed can run execute and finish method in batch
+IMPS validation
+Opportunity and account team
+
+storable action 
+platform
+trigger framework
+
+----------------------------------------------------
+8.	Difference between Workflow and process builder
+9.	What is order of execution in Salesforce?
+10.	Have you exposed any API in Salesforce?
+11.	Any idea about bulk API
+30.	How do you share the record using Apex?
+31.	How would you assign the record to bulk users?
+11.	What is nonselective query in Salesforce
+13.	Have you used query plan?
+14.	What is indexing
+15.	What are the fields in SF can automatically indexed?
+19.	In VF page what is heap size
+20.	How to minimize heap size – SOQL for loop
+24.	How many view states are there?
+
+================================
+Integration:
+	Platform Events:
+		I have worked on Integraton for one of the project Non Banking Financial
+		via Platform Events
+
+		bank account number validation - near realtime (Not Synchronous)
+		When user enter account number on opportunity and click on button validate
+		on click this validate button fire Platform Events publish the event on bus
+		
+		on event bus external system subscribed (Java)
+		
+		bajaj middleware that is subscribed to event bus
+		
+		IMPS validation 
+	---------------------------------------------------
+	
+Batch
+Trigger Framework
+Storable actions
+Platform cache
+Platform Events
+foreground and background action
+Aura
+LWC
+
+
+Aura:
+	Communication - https://developer.salesforce.com/blogs/developer-relations/2017/04/lightning-inter-component-communication-patterns.html
+	Lighting Tap - force:appHostable interface
+	Call Lighting Component in VF page - 
+	LDS - 
+		Use Lightning Data Service to load, create, edit, or delete a record in 
+		your component without requiring Apex code.
+		
+		No need to write any Apex class
+		No need to write SOQL
+		Field level security and record sharing is inbuilt
+		CRUD operation supported
+		Shared cache is used by all standard and custom components
+		Auto notification to all components
+		Supports offline in Salesforce 1
+		
+		lightning:recordForm
+			Display, create, or edit records
+		lightning:recordViewForm
+			Display records with lightning:outputField
+		lightning:recordEditForm
+			Create or edit records with lightning:inputField
+		force:recordData
+			Display, create, edit, or delete records with granular customization
+		
+		
+		<aura:component>
+			<lightning:recordForm
+				recordId="001XXXXXXXXXXXXXXX"
+				objectApiName="Account"
+				layoutType="Compact"
+				columns="2"/> />
+		</aura:component>
+		
+		<aura:component implements="flexipage:availableForRecordHome,force:hasRecordId">
+		<aura:attribute name="recordId" type="String" />
+		<aura:attribute name="fields" type="String[]" default="['Name','Industry']" />
+		<lightning:recordForm recordId="{!v.recordId}" 
+							  objectApiName="Account"
+							  mode="readonly"
+							  fields="{!v.fields}" />
+							  
+							  
+		<aura:component>
+		
+		
+		<lightning:recordViewForm recordId="001XXXXXXXXXXXXXXX" 
+								  objectApiName="Account">
+			<div class="slds-grid">
+				<div class="slds-col slds-size_2-of-3">
+					<lightning:outputField fieldName="Name" />
+					<lightning:outputField fieldName="Phone" />
+				</div>
+				<div class="slds-col slds-size_1-of-3">
+					<lightning:outputField fieldName="Industry" />
+					<lightning:outputField fieldName="AnnualRevenue" />
+				</div>
+			</div>
+		</lightning:recordViewForm>
+		</aura:component>
+		
+		
+		<force:recordData aura:id="recordLoader"
+      recordId="{!v.recordId}"
+      targetFields="{!v.simpleRecord}"
+      targetError="{!v.recordError}"
+      recordUpdated="{!c.handleRecordUpdated}"
+      />
+	  
+	  
+	  
+	 ==================================================================
+Batch Apex
+
+	global class batchExample implements Database.Batchable<sObject> {
+    /**
+        * Webkul Software.
+        *
+        * @category  Webkul
+        * @author    Webkul
+        * @copyright Copyright (c) 2010-2016 Webkul Software Private Limited (https://webkul.com)
+		* @license   https://store.webkul.com/license.html
+	*/
+    global Database.QueryLocator start(Database.BatchableContext BC) {
+        // collect the batches of records or objects to be passed to execute
+        
+        String query = 'SELECT Id,Name FROM Account';
+        return Database.getQueryLocator(query);
+    }
+    
+    global void execute(Database.BatchableContext BC, List<Account> accList) {
+       
+        // process each batch of records
+
+        
+        for(Account acc : accList)
+        {        
+           	// Update the Account Name 
+            acc.Name = acc.Name + 'Webkul';
+        }
+        try {
+        	// Update the Account Record
+            update accList;
+        
+        } catch(Exception e) {
+            System.debug(e);
+        }
+        
+    }   
+    
+    global void finish(Database.BatchableContext BC) {
+    	// execute any post-processing operations
+  }
+}
+
+
+	batchExample be = new batchExample();
+	Id batchId = database.executeBatch(be,100);
+	
+	
+	
+	=======================
+	Queueable Syntax:
+
+	- You can add up to 50 jobs to the queue with System.enqueueJob in a single transaction.
+	- When chaining jobs, you can add only one job from an executing job with System.enqueueJob, 
+		which means that only one child job can exist for each parent queueable job
+	- No limit is enforced on the depth of chained jobs
+	- Developer org has max 5 inlcluding parent
+	
+	public class SomeClass implements Queueable { 
+		public void execute(QueueableContext context) {
+			// awesome code here
+		}
+	}
+	
+	Example:
+	public class AsyncExecutionExample implements Queueable {
+		public void execute(QueueableContext context) {
+			Account a = new Account(Name='Acme',Phone='(415) 555-1212');
+			insert a;        
+		}
+	}
+	
+	ID jobID = System.enqueueJob(new AsyncExecutionExample());
+
+	
+	AsyncApexJob jobInfo = [SELECT Status,NumberOfErrors FROM AsyncApexJob WHERE Id=:jobID];
+	
+	
+	public class FirstJob implements Queueable { 
+		public void execute(QueueableContext context) { 
+			// Awesome processing logic here    
+			// Chain this job to next job by submitting the next job
+			System.enqueueJob(new SecondJob());
+		}
+	}
+=============================
+
+features of
+UCAS
+CCAS - comm as serv
+SF CRM - 
+
+CEO - verma
+
+product
+	
+CPQ
+Configure - 
+Price - usage, quantity, contract price - Account level, percent of total, flat discount
+Quote - Quotation, configurator, configuration rule(Business rule) => final PDF
+======================================================
+
+non banking financial
+
+platform events
+trigger subscribe
+Opportunty validate button - bank account validation near real time
+
+CometD
+IMPS validation 
+
+subscribe
+
+--------------------------------------------
+Platform Events:
+	Box Integration Documents management system
+	certein records not bulkify 
+	16 request at time create
+	future method 50
+	200 at time platform events - async
+	trigger context class - system class - give info
+	resume - trigger context class only for PE replayId
+	
+	OAuth2 flow
+		client Id
+		client screte
+		basic token -> get the access token		
+		refresh token
+
+	REST - JSON, XML, Text, HTML
+	SOAP - XML - parsing - slow process
+	
+	WebService 
+	
+	Inbound
+	Outbound
+=====================================================
+Integration:
+	Platform Events
+	REST API
+	OAuth2 flow
+	Difference Between REST and SOAP
+	When to use REST and SOAP
+
+Automation:
+	Process Builder
+	Flow Builder
+	Approval Process
+	WorkFlow Rule
+	Validation Rules
+	
+Apex:
+	Asynchronous Apex:
+		Batch Apex
+		Future Method
+		Queueable Method
+		Schedulable
+		
+	SOQL
+	Governer Limits
+	
+Lightning Aura:
+
+LWC:
+
+Communities:
+
+CPQ:
+
+CI-CD:
+
+Jenkins:
+
+Agile Methodology:
+
+8X8:
+
+	
+--------------==============================
+LWC
+Aura
+Batch
+order of trigger
+governer
+=============================
+SFDX
+VS Code
+-----------------
+LDS
+Configuration - Process Builder, Flow, Workflow
+				Custom setting, metadata, platform cache, 
+
+Trigger framework
+Recursion - using loop
+future method
+Platform Events
+
+@invocable
+@variable
+-----------------------------------------------
+Commmunities - sharing sets, Menu, Search, Javascript override, lightning component expose,
+			LWC expose, page variation, audienc.
+
+OWD
+Account team - 4 object can control, Opportunity Team
+
+Implicit sharing, with and without
+------------------------------------------------
+8X8
+CPQ - Generic
+--------------------
+agile - methodlogy
+
+===========================
+Account Team
+	It is used to store information about customer, partners and prospects all different users
+	associated to with that particular account
+
+
+Custom Setting:
+	https://www.janbasktraining.com/blog/custom-setting-salesforce/
+
+Custom Metadata:
+	https://www.jitendrazaa.com/blog/salesforce/how-to-retrieve-and-deploy-custom-metadata-types-using-ant/#more-6209
+	
+Platform Events
+Commmunities - Sharing sets
+Commmunities - User Profile Menu
+Commmunities - Search Component
+
+Implicit Sharing:
+	Salesforce provides implicit sharing between accounts and child records 
+	(opportunities, cases, and contacts), and for various groups of portal users.
+	
+	Sharing between accounts and child records:
+		-Access to a parent account : If you have access to an account’s child record, 
+		you have implicit Read Only access to that account.
+		-Access to child records : If you have access to a parent account, 
+		you have access to the associated child records. The account owner's role determines the level of access to child records.
+
+	https://help.salesforce.com/articleView?id=sharing_across_objects.htm&type=5
+
+Platform Cache
+
+Prevent deletion of child records using validation rules
+	PRIORVALUE(RollupField__c ) > RollupField__c
+	
+On the Opportunity object, prevent non-admin users from modifying the Opportunity Name 
+once Probability is greater than 50% and Prevent Opportunity from being deleted 
+if Probability greater than or equal to 75%
+
+=> Validation Rule
+	AND($Profile.Name <> 'System Administrator', Probability > 0.50, ISCHANGED(Name))
+
+trigger Opportunity_Trigger on Opportunity(before delete){
+    Id profileId=userinfo.getProfileId();
+    String profileName=[Select Id,Name from Profile where Id=:profileId].Name;
+    for(Opportunity opp : trigger.old){
+        if(profileName != 'System Administrator' && opp.Probability >= 0.75){
+            opp.addError('Non Admin user can not delete Oppty if Probability greater than equals to 75%.');
+        }
+    }
+}
+
+
+- If SOQL returns more than 50K record, then how will handle it?
+
+   You should look at using Batch Apex to accomplish your goals.
+   You cannot retrieve more than 50,000 records your SOQL calls in a single context.
+   However, with  Batch Apex your logic will be processed in chunks of anywhere 
+   from 1 to 200 records in a batch.
+   You'd need to modify your business logic to take the batching into account if necessary.
+
+
+Integration
+Create Connected App
+Create Authorization Provider
+Define Named Credential
+Use Apex to connect in 5 lines of code
+
+https://www.jitendrazaa.com/blog/salesforce/salesforce-to-salesforce-integration-using-named-credentials-in-just-5-lines-of-code/
+
+Apex Trigger Best practices to avoid recursion
+
+https://help.salesforce.com/articleView?id=000332407&type=1&mode=1
+
+	public class checkRecursive { 
+		public static Set<Id> SetOfIDs = new Set<Id>(); 
+	}
+	
+	trigger TestTrigger on Account (before insert) { 
+		if (Trigger.isAfter && Trigger.isInsert) { 
+			List<Account> accList = new List<Account>(); 
+			for (Account test: Trigger.new) { 
+				If(!checkRecursive.SetOfIDs.contains(test.Id)){ 
+					test.Name = 'helloworld'; 
+					accList.add(test); 
+					checkRecursive.SetOfIDs.add(test.Id); 
+				} 
+			} 
+			insert accList; 
+		} 
+	}
+
+
+
+Organization Access:
+	Company Level - IP Range
+	Profile Level - IP Range
+	Profile Level - Login Hours
+
+
+--------------------------
+InvocableVariable
+InvocableMethod
+
+Difference between Simple Object Access Protocol (SOAP) and Representational State Transfer (REST) 
+http://www.proquestit.com/techies/salesforce-soap-vs-restful-web-services/
+
+Web Services Description Language (WSDL)
+
+View State
+https://www.sfdcpoint.com/salesforce/transient-keyword-view-state-visualforce/
+
+Tips on reducing View State Size:
+
+As we know that total size of ViewState can be 135KB (On date of writing this article), There may be chances that you will hit maximum allowed limit or improve performance of Visualforce page by reducing Viewstate size:
+
+Declare variables as Transient if possible.
+Declare variable as Static, as it is not saved in View State.
+If you want to manage your own state, instead of using <apex:form> use HTML <form> tag instead.
+Recreate state instead of saving in Viewstate. Means if you can use SOQL instead of saving in some object or List, use it.
+You can also use Web service call, Ajax Remoting to recreate state instead of saving in Object.
+
+
+https://help.salesforce.com/articleView?id=000328918&type=1&mode=1
+
+	
+We can call future method from trigger but we can callout from trigger
+We can not call future method from directly batch apex. we can call future method from finish
+method in batch class
+
+You cannot call a future method from another future method as both them are asynchronous. 
+In salesforce you cannot call one asynchronous function into another asynchronous method. 
+You cannot call a method annotated with future from a method that also has the future annotation.
+
+Wrapper classes
+
+--------------------------
+LWC
+
+<!-- todoApp.html -->
+
+// todoItem.js
+import { LightningElement, api } from 'lwc';
+export default class TodoItem extends LightningElement {
+    @api itemName = 'New Item';
+}
+
+<!-- todoItem.html -->
+<template>
+    <div class="view">
+        <label>{itemName}</label>
+    </div>
+</template>
+
+<template>
+    <div class="listing">
+        <c-todo-item item-name="Milk"></c-todo-item>
+        <c-todo-item item-name="Bread"></c-todo-item>
+    </div>
+</template>
+
+- myItem = this.template.querySelector('c-todo-item').itemName;
+
+-------------------------------
+Share javascript
+
+// mortage.js
+const getTermOptions = () => {
+    return [
+        { label: '20 years', value: 20 },
+        { label: '25 years', value: 25 },
+    ];
+};
+
+const calculateMonthlyPayment = (principal, years, rate) => {
+    // Logic
+};
+//export
+export { getTermOptions, calculateMonthlyPayment };
+
+//import
+import { getTermOptions, calculateMonthlyPayment } from 'c/mortgage';
+
+---------------
+static resouce
+
+import resourceName from '@salesforce/resourceUrl/resourceName';
+import { loadStyle, loadScript } from 'lightning/platformResourceLoader';
+
+---------------------
+events
+
+<!-- paginator.html -->
+<template>
+    <lightning-layout>
+        <lightning-layout-item>
+            <lightning-button label="Previous" icon-name="utility:chevronleft" onclick={previousHandler}></lightning-button>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="grow"></lightning-layout-item>
+        <lightning-layout-item>
+            <lightning-button label="Next" icon-name="utility:chevronright" icon-position="right" onclick={nextHandler}></lightning-button>
+        </lightning-layout-item>
+    </lightning-layout>
+</template>
+
+
+// paginator.js
+import { LightningElement } from 'lwc';
+
+export default class Paginator extends LightningElement {
+    previousHandler() {
+        this.dispatchEvent(new CustomEvent('previous'));
+    }
+
+    nextHandler() {
+        this.dispatchEvent(new CustomEvent('next'));
+    }
+}
+
+
+
+<!-- eventSimple.html -->
+<template>
+    <lightning-card title="EventSimple" icon-name="custom:custom9">
+        <div class="slds-m-around_medium">
+            <p class="slds-m-vertical_medium content">Page {page}</p>
+            <c-paginator onprevious={previousHandler} onnext={nextHandler}></c-paginator>
+        </div>
+    </lightning-card>
+</template>
+
+// eventSimple.js
+import { LightningElement } from 'lwc';
+
+export default class EventSimple extends LightningElement {
+    page = 1;
+
+    previousHandler() {
+        if (this.page > 1) {
+            this.page = this.page - 1;
+        }
+    }
+
+    nextHandler() {
+        this.page = this.page + 1;
+    }
+}
+---------------------
+call apex method
+import getAllAccounts from '@salesforce/apex/classname.methodname'
+
+LDS
+import {createRecord} from 'lightning/uiRecordApi' 
+
+CPQ Tools
+-Salesforce CPQ a.k.a SteelBrick
+-Vlocity CPQ
+-Apptus CPQ
+-CloudSense
+
+
+Init event – Updates a component or fires an event after component construction but before rendering.
+render() – Renders the component body.
+afterRender() – Enables you to interact with framework after the component bodies are inserted.
+render event – handled by the framework is preferred over creating a custom render() and overriding afterRender().
+
+<aura:handler name=“init” value=”{!this}” action=“{!c.doInit}”/>
+
+Custom setting 
+!$Setup.HierachySetting__c.Checked__c && ISPICKVAL(Industry,'')	
+
+==================================------------
+Platform Events:
+
+	Just like custom object - Message_Event__e
+	We can create 10 custom fileds on Platform Events
+	Data types - Checkbox,Date,DateTime,Number,Text and Text Area(Long)
+	ReplayId for use with Streaming API
+	Can be packaged
+	can attach triggers and flows
+	
+	Event Publish:
+		Can be Published externally using API
+		Process Builder
+		Apex - EventBus.publish
+			Does not throw DMlException
+			Return a SaveResult
+		All or Nothing is not supported
+		Non-transactional
+		
+	Event processing
+		only after insert support 
+	
+	created one Text Area field - Description__c
+	
+	//Publisher
+	trigger case_event on Case(after Update){
+		Message_Event__e ev1 = new Message_Event__e();
+		ev1.Description__c = 'Message 1';
+		EventBus.publish(ev1);
+		
+		Message_Event__e ev2 = new Message_Event__e();
+		ev1.Description__c = 'Message 2';
+		EventBus.publish(ev2);
+	}
+	
+	//Listener
+	trigger EventTrigger on Message_Event__e(after insert){
+		for(Message_Event__e ev: Trigger.new){
+			//write logic here
+		}
+	}
+	
+	PE -> CometD - protocol
+	how to check events data
+	can we access events data
+	platform event triggers run asynchronously so govener limits are reset
+	millions of records
+	
+	
+Platform Events and Transactions
+	Publish After Commit Publish Behavior
+	Publish Immediately Publish Behavior
+
+Publish Events
+	If your app is on the Salesforce platform, you can publish events using an 
+	Apex method or with declarative tools, such as Process Builder or Flow Builder. 
+	If your app is an external app, you can publish events using Salesforce APIs.
+
+	EventBus.publish()
+	EventBus.publish() method returns a Database.SaveResult object - contains result of publishing
+	If isSuccess() returns true, the event was published in the Salesforce event bus. 
+	Otherwise, the event encountered errors which are returned in the Database.Error object
+	
+	To publish more than one event in the same call, add your events to a list of events, 
+	and pass the list to the EventBus.publish() method.
+	
+	EventBus.publish() method doesn’t throw exceptions caused by an unsuccessful publish operation
+	
+	It is similar in behavior to the Apex Database.insert() method when called with the partial success option.
+
+CometD is a scalable HTTP-based event routing bus that uses an AJAX push technology pattern known as Comet	
+
+GearSet
+ChangeSet
+	
+	
+===============================================
+Org Creds
+
+pallavi_kotamraju@brave-fox-buqdw3.com //Chatbot
+Runway$123
+
+prasadguntuk@playful-fox-ghjqr.com  //Chatbot,LiveAgent,Sites,flow
+badge@12345
+
+prasad_guntuk-xjwg@force.com  //Health Cloud trial org
+hpp@12345
+
+https://id.heroku.com/login
+prasadguntuk@gmail.com
+Prasadg@12345
+
+=====================================================
+Person Account
+Packages
+HIPPA
+Chatbot
+Live Agent
+SSO/Identity Provider
+Canvas Integration
+Lightning Flow
+Heroku
+Genesys CTI - Appexchange product
+Service Cloud
+Health Cloud
+API Integrations - REST/SOAP
+
+--------------------------------------------
+QA Tool - HP QC/AM
+===================================================
+STCC
+
+Health Cloud trial org
+deployment
+Permissions all fields and objects
+Create STCC app
+Created data for all objects
+
+-----------------------------------------
+STCC_Questions__c.SMAG_Link_ID__c
+STCC_Supplememntal__r.Content_XHTML__c
+STCC_AdviceMaster__r.Advice_XHTML__c
+STCC_ProtocolMaster__r.TestExternalId_c__c
+STCC_ProtocolMaster__c.Definition_XHTML__c
+STCC_ProtocolMaster__c.Background_XHTML__c
+STCC_ProtocolMaster__c.First_Aid_XHTML__c
+
+Tabs removed
+Examples
+
+Tabs added
+Medical_Initial_Assessment__c
+
+===================================================
+Tasks
+
+1. Understand complete requirement and flow chatbot COVID-19
+2. Understand STCC Data Model
+3. Understand MAS requirement
+
+Todays tasks - 04/27/2020
+	Ramesh - Working on batch/scheduler
+	Chetana - workng on Prechat form
+	Madhu - working on survey form
+	Srikant - Looking into Canvas App
+	Vippin - Goining through Induction
+	Pallavi - 
+	Yugandhar - 
+	Prasad - change UI for assessment form, Configuring STCC data model
+	
+	COVID-19 Team Member Screening Form
+
+
+https://client.pahub.com/
+from Swanand Khanzode (internal) to everyone:
+https://www.compass.state.pa.us/
+
+
+https://mkhedar-developer-edition.ap6.force.com/samplePage/survey/runtimeApp.app?invitationId=0Ki0K0000008RWK&surveyName=customer_review_of_live_agent&UUID=c81b35e5-c1a4-4179-9866-92d5e44ad2fe
+	
+	
+	DATE of CONTACT: "When did you have contact with a coronavirus patient?" (e.g., days)
+	DATE_of_CONTACT1
+	
+	
+	abc@xyz1 madhukhedar_inclass@psl.com 
+
+
+yes we will need access to their On-Premise Genesys System
+2. the Appexchange app for Genesys
+Their current configuration of how tollfree number and call routing works
+
+
+
+=========================
+Genesys CTI and member accelator
+
+
+-------------------------===================
+https://d.la1-c2-ukb.salesforceliveagent.com/chat/rest/ - Chat API Endpoint
+
+
+
+<style type='text/css'>
+	.embeddedServiceHelpButton .helpButton .uiButton {
+		background-color: #005290;
+		font-family: "Arial", sans-serif;
+	}
+	.embeddedServiceHelpButton .helpButton .uiButton:focus {
+		outline: 1px solid #005290;
+	}
+</style>
+
+<script type='text/javascript' src='https://service.force.com/embeddedservice/5.0/esw.min.js'></script>
+<script type='text/javascript'>
+	var initESW = function(gslbBaseURL) {
+		embedded_svc.settings.displayHelpButton = true; //Or false
+		embedded_svc.settings.language = ''; //For example, enter 'en' or 'en-US'
+
+		//embedded_svc.settings.defaultMinimizedText = '...'; //(Defaults to Chat with an Expert)
+		//embedded_svc.settings.disabledMinimizedText = '...'; //(Defaults to Agent Offline)
+
+		//embedded_svc.settings.loadingText = ''; //(Defaults to Loading)
+		//embedded_svc.settings.storageDomain = 'yourdomain.com'; //(Sets the domain for your deployment so that visitors can navigate subdomains during a chat session)
+
+		// Settings for Chat
+		//embedded_svc.settings.directToButtonRouting = function(prechatFormData) {
+			// Dynamically changes the button ID based on what the visitor enters in the pre-chat form.
+			// Returns a valid button ID.
+		//};
+		//embedded_svc.settings.prepopulatedPrechatFields = {}; //Sets the auto-population of pre-chat form fields
+		//embedded_svc.settings.fallbackRouting = []; //An array of button IDs, user IDs, or userId_buttonId
+		//embedded_svc.settings.offlineSupportMinimizedText = '...'; //(Defaults to Contact Us)
+
+		embedded_svc.settings.enabledFeatures = ['LiveAgent'];
+		embedded_svc.settings.entryFeature = 'LiveAgent';
+
+		embedded_svc.init(
+			'https://playful-fox-ghjqr-dev-ed.my.salesforce.com',
+			'https://hpp-chat-bot-developer-edition.ap4.force.com/',
+			gslbBaseURL,
+			'00D6F000002VnUm',
+			'Hpp_Chat_Agent',
+			{
+				baseLiveAgentContentURL: 'https://c.la1-c2-ukb.salesforceliveagent.com/content',
+				deploymentId: '5726F0000004gkS',
+				buttonId: '5736F0000004fMm',
+				baseLiveAgentURL: 'https://d.la1-c2-ukb.salesforceliveagent.com/chat',
+				eswLiveAgentDevName: 'Hpp_Chat_Agent',
+				isOfflineSupportEnabled: false
+			}
+		);
+	};
+
+	if (!window.embedded_svc) {
+		var s = document.createElement('script');
+		s.setAttribute('src', 'https://playful-fox-ghjqr-dev-ed.my.salesforce.com/embeddedservice/5.0/esw.min.js');
+		s.onload = function() {
+			initESW(null);
+		};
+		document.body.appendChild(s);
+	} else {
+		initESW('https://service.force.com');
+	}
+</script>
+
+=======================================----------------
+leverage
+
+Person Account
+Managed package
+Unmanaged package
+
+
+Trailhead  links 
+https://trailhead.salesforce.com/en/content/learn/modules/service_bots_basics?trail_id=service_einstein 
+https://trailhead.salesforce.com/en/content/learn/projects/build-an-einstein-bot?trail_id=service_einstein 
+https://trailhead.salesforce.com/content/learn/modules/web-chat 
+ 
+Documents shared on Team 
+ 
+POC
+1.	Create Einstein Chatbot using the trailhead above
+•	Key objective of the POC
+•	Working Chatbot
+•	Understand how to configure questionnaire for chatbot 
+•	How to generate html code snippet to embedded in public site
+ 
+2.	Live chat implementation 
+•	Configuration of agent user 
+•	How to switch between Chatbot to Live agent 
+•	How to embed html a site 
+ 
+3.	Data Model to store STCC Nurse Triage questionnaire 
+•	Understand accelerator build by Archana’s team (Refer document shared by Abhishek on Team, recording of demo by Sayali)
+•	How to implement the data model (may be by installing the package)
+•	Customization suggested in Abhishek’s document 
+•	Understand import script to load questionnaire 
+
+
+===================
+Health Cloud
+	-EHR
+		An electronic health record (EHR) is a digital version of a patient’s paper chart. 
+		EHRs are real-time, patient-centered records that make information available instantly and 
+		securely to authorized users. While an EHR does contain the medical and treatment histories 
+		of patients, an EHR system is built to go beyond standard clinical data collected in a provider’s 
+		office and can be inclusive of a broader view of a patient’s care. EHRs are a vital part of health 
+		IT and can:
+        -Contain a patient’s medical history, diagnoses, medications, treatment plans, immunization dates, 
+		allergies, radiology images, and laboratory and test results
+        -Allow access to evidence-based tools that providers can use to make decisions about a patient’s 
+		care
+        -Automate and streamline provider workflow
+        One of the key features of an EHR is that health information can be created and managed by 
+		authorized providers in a digital format capable of being shared with other providers across more 
+		than one health care organization. EHRs are built to share information with other health care 
+		providers and organizations – such as laboratories, specialists, medical imaging facilities, 
+		pharmacies, emergency facilities, and school and workplace clinics – so they contain information 
+		from all clinicians involved in a patient’s care.
+	
+=================
+persistent@agedcaregp.com
+newuser@345
+===========================================================================
+Single Sign-On (SSO) Between 2 Salesforce Orgs
+
+	1. Identity Provider Org enable "Enable Identity Provider" button
+		- It will take to you certificate selection menu click on create new certificate
+		- got to Identity Provider and again enable it and select certificate created recently
+		- It will give u URL "Salesforce Identiry" endpoints which is used in Service Provider org
+		
+	2. Service Provider Org
+		- go to remote site setting and give URL of Identiry Provider org (domain URL)
+		- Setup single sign-on settings --> new metadata url --> It will ask metadata URL --> provide url from Identiry Provider org "Salesforce Identiry" URL
+			It will populate all fields details
+		- SAML Identiry Type --> Federation Id 
+		- Provides Endpoints
+			- Loging URL
+			- Logout URL
+			- Auth Token endpoint URL
+	3. Connected App on Identiry Provider Org
+		- In this Enable SAML
+		- Entity Id - get Entity Id from Service Provider org
+		- ACS UZRL - get login url from Service Provider org
+		- Subject Type - Federation Id as per selected in Service Provider org as SAML Identiry Type
+		- Idp Certificate - as per Service Provider org used Identiry Provider Certificate
+		
+		- Assign profiles who need access to this app
+		
+	4. Service Provider Org
+		- My domain --> In Authentication Configuration section --> Authentication Service --> select Idp org user name as well
+		- Go to user --> select user record and give Federation Id (both same)
+	
+	5. Identiry Provider Org
+		- Go to user --> select user record and give Federation Id (both same)
+		
+	6. Testing
+		- Idp initiated Login from Identiry Provider Org
+		- SDP initiated Login From Service Provider Org while login u can see idp login button
+		
+	7. Add button on org for login
+		- goto Connected App i.e. in Identiry Provider org
+		- In basic Information section set Start URL as ACS URL
+		Refer here IDP initiated URL 
+
+
+IDP initiated - 
+SDP initiated - enter service provider domain url in browser and it will show one more button login as IDp on click, it will take you 
+				to idp login page and you need to verify idp org creds and will login
+				
+Subject Type --> Specifies which field defines the user's identity for the app. Options include the user's username, federation ID, user ID, 
+		a custom attribute, or an algorithmically calculated persistent ID.
+===========================================================================
+a[title~=Home] {
+  display:none !important;
+}
+
+a[title='New Note'] {
+  display:none !important;
+}
+
+.profileDetailView .userDetailHeader a[title='Edit']{
+	display:none;
+}
+
+span[title='Follow'], .slds-button .slds-icon-utility-add {display: none}
+span[title='Following'], .slds-button .slds-icon-utility-check {display: none}
+span[title='Unfollow'], .slds-button .slds-icon-utility-close {display: none}
+.slds-button_neutral.slds-is-selected:hover:not([disabled]), .slds-button_neutral.slds-is-selected:focus:not([disabled]), .slds-button--neutral.slds-is-selected:hover:not([disabled]), .slds-button--neutral.slds-is-selected:focus:not([disabled]){
+    display: none;
+}
+.not-selected, .slds-not-selected{
+    display: none;
+}
+
+AND(NOT(LastModifiedDate <> LastModifiedDate),
+OR(
+NOT(ISCHANGED(  AG_Withdraw_Case__c ))))
+
+
+AND(NOT( ISNEW() ), $Profile.Name = "Provider Community User",
+OR(
+ISCHANGED( Description ), ISCHANGED(  ommsDecision_Justification__c ), ISCHANGED( AccountId ), ISCHANGED(  Subject  ), ISCHANGED(  SuppliedEmail ), ISCHANGED(  ContactId ), ISCHANGED(  Reason ), ISCHANGED(  omms_ReceivedDateTime__c ), ISCHANGED(  ommsDecision_Letter_Date__c )))
+
+
+--------------------------------------
+-Process Builder
+
+I ran into a similar issue when deploying a process that posts to a chatter group. 
+What seems to be happening is when you develop the process in a sandbox you are providing 
+the name of the group or queue and the process builder links it to the internal ID behind 
+the scenes. Unfortunately the IDs are typically different in your dev org and production org.
+
+To fix this, after you deploy, you will need to modify the process (clone) 
+in the production org and re-link the queue by name in the prod org so it gets the proper ID. 
+When you activate the cloned version, it should work as expected.
+
+----------------------------
+public with sharing class CommunitiesLandingController {
+        // Code we will invoke on page load.
+    public PageReference forwardToStartPage() {
+        String communityUrl = 'https://sayalicom-developer-edition.ap16.force.com/';
+        String customHomePage = 's/recordlist/Account/Default';
+        
+            return new PageReference(communityUrl + '/login?startURL=' + EncodingUtil.urlEncode(customHomePage, 'UTF-8'));
+        }
+      
+        public CommunitiesLandingController() {}
+    }
+===========================
+List view hide
+
+https://success.salesforce.com/ideaView?id=0873A000000TtcHQAS
+
+--------
+Quick action not appear if feed track is enabled
+
+https://www.jitendrazaa.com/blog/salesforce/why-quick-actions-are-not-appearing-on-case-page-layout-in-lightning-experience/#:~:text=Actions%20on%20the%20user%20profile,of%20the%20global%20publisher%20layout.&text=So%2C%20quick%20action%20would%20not,if%20feed%20tracking%20is%20enabled.
+
+=============
+Navigation 
+
+https://developer.salesforce.com/docs/component-library/bundle/lightning:navigation/documentation
+
+--------------
+
+LDS
+https://developer.salesforce.com/docs/atlas.en-us.lightning.meta/lightning/data_service_create_record.htm
+
+===============
+
+Allow Guest Users to Access Flows
+ 
+https://www.youtube.com/watch?v=IpzIP5e8pRY
+	lightning:availableForFlowScreens
+====================== 
+
+Redirect url in Community
+	$A.get('e.force:refreshView').fire();   
+OR                                      
+	/*var eUrl= $A.get("e.force:navigateToURL");
+	eUrl.setParams({
+		"url": 'https://ommsumdev-providercommunityommsumdev.cs32.force.com/providerag/s/case/Case/Default' 
+	});
+	eUrl.fire();*/
+===========================================================================
+Accessing Salesforce Data
+	1. LDS
+		Enables you to work with SF Data and Metadata without a need of Server Side Controller.
+		-Build on top of User Interface API
+		-Get data and metadata in same response
+		-Respect CRUD access and field level security
+		-Respect sharing setting
+		
+		LDS Advantages
+		-No server controller needed.
+		-Caches results on the client.
+		-Invalidates cache entries when dependent SF data and metadata changes.
+		-Optimizes server calls by bulkifying and deduping requests.
+		Note - if multiple compoonet request same record it fetches only once and share data to other from browser cache.
+		
+	2. LDS Based Components
+		1. lightning-record-view-form
+		2. lightning-record-edit-form
+		3. lightning-record-form
+		
+		@wire service
+		-wire is a reactive service which is built on LDS
+		-You would need wire service to read data from one of the wire adapter, It could LDS functions or normal Apex calls.
+		-wire service automatically cache the data on client side, which is great for data read operation.
+		-Avoid using wire service if you are performing any DML operation on retrieved data.
+		-Properties decorated with @wire is reactive but private, similar to @track decorated properties.
+		
+	3. @AuraEnabled Methods
+		-To call apex method from LWC
+		-Must be either public or global and must be static methods.
+		-Class must be either public or global
+		-Cacheable = true -> response of these methods is cached in browser.
+==========================================================================
+SFDX and VS Code
+
+Installation:
+	1. Salesforce CLI 
+		i] Check Properly installed and working or not 
+			Got to -> command prompt -> sfdx
+		ii] Update if your SF CLI version is not latest
+			Got to -> command prompt -> sfdx update
+		iii] sfdx force - Managing version (if CLI version is 47 and you want version 42 we can change like)
+			sfdx force:config:set -g apiVersion=42.0 -> update CLI version to 42
+			sfdx force:config:set -g apiVersion= (dont provide version keep it blank)-> update CLI version to latest
+			sfdx force:config:list (It will provide global configuration overrided value like it shows above overriden version 47)
+			
+	2. Create Project
+		sfdx force:project:create -n Demo1
+		
+	3. Authorize Org
+		sfdx force:auth:web:login -a Devorg (many orgs in sfdx system have to differentiate giving alise as Devorg)
+	
+	4. List of Orgs in SFDX system saved
+		sfdx force:org:list
+	
+	5. Open org without username and password (using alise - Devorg)
+		sfdx force:org:open -u Devorg
+	
+	6. Importing existing metadata Change Set
+		sfdx force:mdapi:retrieve -f ./mdapi -u Devorg -p DemoChangeSet //This command return zip file
+		unzip mdapi/unpackaged.zip //it will unzip file
+	
+	7. Importing using Package.xml to sfdx project 
+		sfdx force:mdapi:retrieve -f ./mdapi -u Devorg -k mdapi/package.xml //This command return zip file and package.xml should present in sfdx
+		
+		convert source format
+		sfdx force:mdapi:convert -f mdapi -d force-app -u Devorg  //above zip file converted to source format
+		//here mdapi is the metadata in sfdx converting to force-app as source format
+		
+		metadata to source format without conversion step
+		sfdx force:source:retrieve --manifest mdapi/package.xml -u Devorg
+		
+	8. Create Component/Class
+		sfdx force:apex:class:create --classname MyApexClass --template DefaultApexClass --outputdir force-app/main/default/classes
+		
+		Deploy to org
+		sfdx force:source:deploy --sourcepath force-app/main/default/classes/MyApexClass.cls --json --loglevel fatal -u Devorg
+		
+		update Apex class outside sfdx and retrieve locally
+		sfdx force:source:retrieve --sourcepath force-app/main/default/classes -u Devorg
+		
+		//if you use sourcepath we can only retrieve classes which are exists in sfdx. if you created new class on org can not retrieved it.
+		
+		//if you want outside created class use manifest and add class to package.xml
+		sfdx force:source:retrieve --manifest mdapi/package.xml -u Devorg
+		
+	9. Run Test from sfdx
+		 sfdx force:apex:test:run -l RunLocalTest -2 -u Devorg
+		
+		
+	
+===========================================================================
+<template>
+    <div class="slds-theme_default">
+        <center>
+        
+        <lightning-button label="Show Modal" variant="brand" onclick={openmodal}></lightning-button>
+        </center>
+
+        <template if:true={openmodel}>
+        <div class="demo-only" style="height: 640px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeModal}>
+                            <lightning-icon icon-name="utility:close" size="medium">
+                            </lightning-icon>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Modal Box</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium CustomModal" id="modal-content-id-1">
+                        <div id="mainContainer" class="mainContainer">
+                            <div class="childContainer">
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                                
+                            </div>
+                          </div>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Cancel" variant="neutral" onclick={closeModal}></lightning-button>&nbsp;&nbsp;&nbsp;&nbsp;
+                        
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>
+        </template>
+    </div>
+</template>
+
+
+
+=============
+.mainContainer{
+    height: 200px;
+    overflow-y: auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    width: 90%
+}
+.CustomModal{
+    overflow-y: hidden;
+    height: 350px;
+    z-index: 99;
+}
+.slds-modal__container{
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    position: fixed;
+    overflow: hidden;
+}
+body{
+    touch-action: none;
+}
+
+==========
+import { LightningElement, track } from 'lwc';
+
+export default class LWCModalBoxDemo extends LightningElement {
+    @track openmodel = false;
+    openmodal() {
+        this.openmodel = true;
+    }
+    closeModal() {
+        this.openmodel = false;
+    } 
+}	
+===========================================================================
+@track openmodel = false;
+    openmodal() {
+        this.openmodel = true;
+        this.showcoApplicantModal = true;
+        if(this.openmodel){
+            //this.template.querySelector('.modal-hide-custom').style="display:none";
+            
+        this.template.querySelector('[data-class="modalClasscontent"]').style="display:block";
+        this.template.querySelector('[data-id="modalClasscontentId"]').addEventListener(
+            'touchmove', this.closeScroll.bind(this), true);
+        }
+    }
+
+    closeScroll(event){
+        event.stopPropagation();
+
+    }
+    closeModal() {
+        this.openmodel = false;
+        //this.template.querySelector('.modal-hide-custom').style="display:block";
+        this.template.querySelector('[data-class="modalClasscontent"]').style="display:none";
+        this.template.querySelector('[data-id="modalClasscontentId"]').removeEventListener(
+            'touchmove', this.closeScroll.bind(this), true);
+    }
+=============
+
+<div class="modalClassc" data-class="modalClasscontent" data-id="modalClasscontentId">
+
+            <!-- Modal content -->
+            <div class="modalcontentelement">
+                <c-applicant-search-and-create-l-w-c record-id={recordId} primary-applicant-id={primaryApplicantId}
+                        loan-id={recordId}></c-applicant-search-and-create-l-w-c>
+
+                        
+                            <lightning-button label="Cancel" variant="neutral" onclick={closeModal}></lightning-button>
+                        
+            </div>
+        </div>
+===============
+.slds-shw{
+    display: inline;
+}
+
+.modalClassc {
+    display: none;
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 150px; /* 150px*/
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    /*overflow: auto;  Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    
+  }
+  
+  /* Modal Content */
+  .modalcontentelement {
+    background-color: #fefefe;
+    margin: 0 auto;
+    z-index: 99;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 95%;
+    padding-top: 20px; /* Location of the box */
+    margin-top: 230px;
+    overflow-y: scroll;
+    overscroll-behavior-y: contain;
+    height: 400px;
+    position: absolute;
+    top: 350px;
+    left: 10px;
+  }
+  /*body.noScroll{
+    overflow: hidden;
+  }*/
+  
+  /* The Close Button */
+  .close {
+    color: #aaaaaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+  }
+  
+  .close:hover,
+  .close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  ===================================
+  .modalClassc {
+  display: none;
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 150px;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+  overscroll-behavior-y: contain;
+}
+
+/* Modal Content */
+.modalcontentelement {
+  background-color: #fefefe;
+  
+  padding: 20px;
+  border: 1px solid #888;
+  width: 95%;
+  padding-top: 20px; /* Location of the box */
+  margin-top: 100px;
+  overflow-y: scroll;
+  height: 60%;
+}
+/*body.noScroll{
+  overflow: hidden;
+}*/
+
+/* The Close Button */
+.close {
+  color: #aaaaaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+==========
+<template>   
+        <center>
+        <lightning-button label="Show Modal" variant="brand" onclick={openmodal}></lightning-button>
+        </center>
+
+            <div class="modalClassc" data-class="modalClasscontent" data-id="modalClasscontentId">
+
+                <!-- Modal content -->
+                <div class="modalcontentelement">
+                         ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                        <footer class="slds-modal__footer">
+                            <lightning-button label="Cancel" variant="neutral" onclick={closeModal}></lightning-button>
+                        </footer>
+                    </div>
+                
+            </div>
+</template>
+============
+import { LightningElement, track } from 'lwc';
+
+export default class LWCModalBoxDemo extends LightningElement {
+    @track openmodel = false;
+    openmodal() {
+        this.openmodel = true;
+        if(this.openmodel){
+        this.template.querySelector('[data-class="modalClasscontent"]').style="display:block";
+        //this.template.querySelector('.modalClassc').style.top = window.pageYOffset+'px';
+        alert(window.pageYOffset);
+        this.template.querySelector('[data-id="modalClasscontentId"]').addEventListener(
+            'touchmove', this.closeScroll.bind(this), true);
+    }
+    }
+
+    closeScroll(event){
+        event.stopPropagation();
+
+    }
+    closeModal() {
+        this.openmodel = false;
+        this.template.querySelector('[data-class="modalClasscontent"]').style="display:none";
+        this.template.querySelector('[data-id="modalClasscontentId"]').removeEventListener(
+            'touchmove', this.closeScroll.bind(this), true);
+    } 
+}
+===========================================================================
+Lightning Aura Component
+	LWC
+	Apex
+	Triggers
+	Asynchronous Apex
+	API Integration
+	Weservices
+	Connected App
+	VisualForce Pages
+	Process Builders
+	Flows
+	Workflows
+	Community
+	
+	Custom Setting                       Custom Metadata
+									Metadata(data about a data)
+
+- Data we can't deploy				- Its easy to deploy with data
+- Doesn't need query				- Its need query
+- Based on user/profile we can use  - allows validatoins, page layouts
+
+
+Asynchronous Apex
+https://www.apexhours.com/asynchronous-apex/
+https://jayakrishnasfdc.wordpress.com/2019/12/22/asynchronous-apex/
+
+Platform Events
+http://amitsalesforce.blogspot.com/2020/04/platform-events-in-salesforce.html
+
+LWC Notes:
+	Slots 
+	- The Slot is a placeholder for markup. Once the Slots are created in Child Component, 
+		the markup for these Slots can be passed from Parent Component
+		
+	Public Property
+	- o expose a public property, decorate a field with @api. Public properties define the API for a component. 
+		Public properties used in a template are reactive
+	
+	Private Property
+	- All primitive fields are reactive.
+	- There is one use case for @track. When a field contains an object or an array, 
+		there’s a limit to the depth of changes that are tracked. To tell the framework to 
+		observe changes to the properties of an object or to the elements of an array, decorate the field with @track.
+	
+	Decorators
+	- @track - When a field contains an object or an array, there’s a limit to the depth of changes that are tracked.
+	- @api - to expose public property/method
+	- @wire - to read salesforce data/ apex method
+	
+	Shadow DOM
+	- CSS declared in the child does not affect parent component and vice versa
+	
+	Component Lifecycle
+	- User requested for the component -> construct is called first
+		When construct called niether DOM inserted on page nor page rendered, i.e. you can do any DOM manipulation and you can not assign 
+		any attribute to html elements, you use here any database connection to open
+	- after check if is there any public properties in component and if they are any updation if yes first public properties get updated
+	- after that components DOM inserted on page
+	- then connectedCallback() is called - in this DOM is inserted but not rendered yet so you can not do DOM manipulation
+		you can find element here but you can not add/remove elements programatically
+	- after this DOM is rendered
+	- then framework check if there is any child component in you component if yes then same cycle will repaeate as mentioned above steps
+	- Then framework call renderedCallback() is called first child component then it will call parent component as well
+	- if user redirected to other page then disconnectedCallback() is called - disconnect any database connection

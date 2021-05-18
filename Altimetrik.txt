@@ -1,0 +1,544 @@
+=====================
+https://www.sfdc-lightning.com/2019/10/availability-of-trigger.new-trigger.old-in-apex-trigger.html
+=======================
+-Trigger on leadSource
+-Trigger on show total count of contacts on account
+-Lightning Component with select and selectAll checkbox
+==================================================
+-what is sharing rules? types of sharing rules? what is owner-based sharing rules?
+	Use sharing rules to extend sharing access to users in public groups, roles, or territories. 
+	Sharing rules give particular users greater access by making automatic exceptions to 
+	your org-wide sharing settings.
+	
+	Types 
+	Owner-Based Sharing Rules
+		An owner-based sharing rule opens access to records owned by certain users. 
+		For example, a company’s sales managers need to see opportunities owned by sales managers 
+		in a different region. The U.S. sales manager could give the APAC sales manager access 
+		to the opportunities owned by the U.S. team using owner-based sharing.
+
+	Criteria-Based Sharing Rules
+		custom object for job applications, with a custom picklist field named “Department.” 
+		A criteria-based sharing rule could share all job applications in which the Department 
+		field is set to “IT” with all IT managers in your organization. You can create up to 50 
+		criteria-based sharing rules per object.
+	
+	Guest User Sharing Rules
+		A guest user sharing rule is a special type of criteria-based sharing rule. 
+		They are the only way to grant record access to unauthenticated guest users if the 
+		Secure guest user record access setting is enabled.
+	
+-Can we call future method from trigger? can we call callout from trigger?
+	While developing applications in force.com, sometimes we need to consume external web service 
+	in apex trigger. But, callouts cannot be made from apex triggers as that restricts database 
+	transaction until the callout is completed and the time limit for this is up to 120 seconds.
+	
+	We cannot call external web services synchronously from triggers because calling a web service 
+	synchronously from triggers will open the connection for the lifetime of the callout However, 
+	we can call the web service by using future methods i.e. asynchronously.
+	
+	The only way to execute a callout from a trigger is to run it asynchronously and this can be 
+	achieved by executing a method with the @future method. Future methods execute asynchronously i.e. 
+	one does not need to wait for a response. The thing to keep in mind is, a future method can have 
+	native calls, as well as, they can make a call out to an external web service and hence, 
+	in order to enable the future method to allow callouts, an extra parameter “Callout=true” needs 
+	to be passed.
+
+	When the above trigger is fired it will throw an error as 
+	“Callout from triggers are currently not supported.”
+
+	To resolve this you need to make a small change in your Apex code. 
+	Just add @future annotation before the apex method
+	
+-Can we call a future method from batch Apex?
+	No, We cannot call future methods directly from batch apex but we can call a  web service 
+	from batch class and that web service can call the @future method. Also, we can call the future 
+	method from finish method in the batch class. 
+-Calling Future methods from triggers:
+	We cannot call external web services synchronously from triggers because calling a web service 
+	synchronously from triggers will open the connection for the lifetime of the callout However, 
+	we can call the web service by using future methods i.e. asynchronously.
+-How to call a web service using the future method?
+	To make a callout to external web service, You create an apex class with the future method marked with @future(callout=true)
+-Queueable or Future or Batch why do you need them to make a callout from trigger?
+	Because a callout has to be made asynchronously from apex trigger because callouts can 
+	hold your database transactions until they're completed. This could obviously cause 
+	significant contention with other transactions and impact performance. Now by making a 
+	asynchronous call you're running a separate independent transaction other than your current 
+	transaction and your dml's doesn't have to wait for your callout response. Read more about 
+	HTTP Callout from Triggers
+	
+	Callouts cannot be made from triggers as that would hold up the database transaction 
+	until the callout completed, which can be up to 120 seconds from a limits perspective. 
+	This could obviously cause significant contention with other transactions and impact 
+	performance.
+
+	Future method: The issue with future methods is that you cannot chain them.
+
+	Queueable: Queueable are much more flexible in terms of functionality compared to future 
+	methods. They can be chained like batch apex. You can also call a batch class or a future 
+	method from them.
+	
+	Batch Apex: We typically prefer batch apex when we are dealing with huge data or trying to 
+	leverage relaxation of some of the governor limits like the number of records that can be 
+	queried or chunking the data based on scope and executing them in smaller batcher which acts 
+	as independent transaction, Even though these are much more powerful they needs to be used 
+	with much consideration. Read more about Is it advisable to call Batch from trigger
+
+
+-what are errors occured in trigger
+-if trigger calling future method -> caused by: 
+System.AsyncException: Future method cannot be called from a future method
+	
+	Trigger test on Opportunity(after update) {
+	  OppDateTest.updateOppDate();
+	  }
+	global class OppDateTest{
+
+	@future(callout=true)
+	  public static void updateOppDate() {
+	 
+	  Http h = new Http();
+
+	// Instantiate a new HTTP request, specify the method (GET) as well as the endpoint  
+		String url='http://xxx.xxx.com/xxx/xxx.php';
+		HttpRequest req = new HttpRequest();
+		req.setEndpoint(url);
+		req.setMethod('GET');
+
+	// Send the request, and return a response  
+		
+		HttpResponse res = h.send(req);
+		String str=res.getBody();
+
+	  Opportunity[] opp = [SELECT id, name FROM Opportunity where name='test'];
+		for (Opportunity o : opp) {
+		 o.description = str;
+		  update o;
+		  
+		  }
+	  }
+	}
+	
+	Error:
+	Failed to invoke future method 'public static void updateOppDate()' on class 'OppDateTest' 
+	for job id '707M0000000E4PF'
+
+	caused by: System.DmlException: Update failed. First exception on row 0 with id 
+	006M00000026BVNIA2; first error: CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY, cloudswarm.opptySwarm:
+	execution of AfterUpdate
+
+	caused by: System.AsyncException: Future method cannot be called from a future method: 
+	cloudswarm.SwarmHelper.evaluateOpptyRules(LIST<Id>)
+	
+	Solution:
+	Since you are updating the opportunity via this trigger, the update is firing twice - first 
+	when the record is updated by the user, and then again by the code in the trigger - so 
+	the @future is calling another @future during the seciond update.
+
+	To get round this, you need to add a boolean trigger helper, that you check when the 
+	trigger fires to see if it has already been called by this trigger.
+	
+	public with sharing class triggerHelper {
+
+	public static boolean b=false;
+	//A boolean that is set and then checked at the beginning of update triggers to be sure 
+	they only execute once
+	public static  void  recursiveHelper (Boolean tempBool){
+		b=tempBool;
+	}
+	}
+	
+	And then in the trigger, add an initial check for the boolean, and set to true:
+	if(!triggerhelper.b){
+	triggerhelper.recursiveHelper(true);
+	
+	Finally, set the boolean to true in the @future class...that way, the trigger won't 
+	fire when the @future updates the opportunity record.
+	
+	-----------------------
+	Salesforce doesn't allow a future method to be called from another future method or a 
+	batch job. Before calling your future method, you should check if a future or batch job 
+	is already running. This would be a best practice for any code you ever write that calls a 
+	future method. Good news is that it's very easy. 
+	
+	if(System.IsBatch() == false && System.isFuture() == false){ 
+		// make your future call here 
+	}
+	- Default batch size is 200
+	- Maximum batch size is 2000
+	- Maximun number of batch jobs allowed in Apex Flex Queue is 100
+	- The system can process/run up to 5 queued or active jobs
+	- I have 150 batch jobs to execute will I be able to queue them in one go --> No, database.executeBatch throws limitException, 
+		we can add max 100 jobs at time
+	- QueryLocator : I has limit of 5 million records
+	- Iterable : I has limit of 50K records
+	- How to stop Batch job --> Database.executeBatch and Syste.scheduleBatch method retuns an Id that can be used in System.abortJob method
+	- Future method can not be called from Batch apex
+	- difference -> database.batchable is an interface and database.batchableContext is a context variable which store the runtime information eg. jobId
+	- Batch Apex in which the 50K limit counts per batch execution. This limit Counts for each transaction and these limits are reset for each execution 
+		of a batch of records in the execute method.
+	
+	Q. How to handle error records in Batch apex in Salesforce?	
+	Ans 1.Have your batch class implement Database.stateful
+		2.Declare some variables that are initialized in the constructor to 0. These variables count successes and errors; also a string variable that remembers the records that failed and why (initialized to empty string).
+		3.Use Database.update with allOrNothing = false instead of update within execute(). Interrogate each member of Database.SaveResult[] for isSuccess() and count succcesses and failures in your stateful variables from #2. Log in the stateful variable all the errors (id of record, name of record, and error message/exception)
+		4.In the finish method, send an email to the sysad of count of successes/failures + string variable of all the failures.
+		5.In finish() method, write your batch results to a custom Log__c record(s)
+
+-can we call future method from batch apex - No
+-can we call future method from another future method - No
+-can we call batch from another batch - Yes, Upto 5
+-can we call future method from queuable
+-what is the depth of the Queueable chainig - Developer and trial org has 5 including parent
+-what is with sharing and without sharing keywords
+	Apex generally runs in system context; that is, the current user's permissions, 
+	field-level security, and sharing rules aren’t taken into account during code execution.
+	
+	executeAnonymous always executes using the full permissions of the current user.
+	
+	Sharing rules are distinct from object-level and field-level permissions. 
+	They can coexist. If sharing rules are defined in Salesforce, you can enforce them at 
+	the class level by declaring the class with the with sharing keyword.
+	
+	Use the with sharing or without sharing keywords on a class to specify whether sharing rules 
+	must be enforced.
+	
+	Use the without sharing keywords when declaring a class to ensure that the sharing rules 
+	for the current user are not enforced. For example, you can explicitly turn off sharing rule 
+	enforcement when a class is called from another class that is declared using with sharing.
+	
+	The sharing setting of the class where the method is defined is applied, not of the class 
+	where the method is called. For example, if a method is defined in a class declared with 
+	with sharing is called by a class declared with without sharing, the method executes with 
+	sharing rules enforced.
+	
+	If a class isn’t declared as either with or without sharing, the current sharing rules 
+	remain in effect. Therefore, the class doesn’t enforce sharing rules except when it 
+	acquires sharing rules from another class. For example, if the class is called by another 
+	class that has sharing enforced, then sharing is enforced for the called class.
+
+	Both inner classes and outer classes can be declared as with sharing. The sharing setting 
+	applies to all code contained in the class, including initialization code, constructors, 
+	and methods.
+
+	Inner classes do not inherit the sharing setting from their container class.
+
+	Classes inherit this setting from a parent class when one class extends or implements another.
+	
+	Enforcing sharing rules by using the with sharing keyword doesn’t enforce the user's 
+	permissions and field-level security. Apex code always has access to all fields and objects 
+	in an organization, ensuring that code won’t fail to run because of hidden fields or objects 
+	for a user.
+	
+	public with sharing class CWith {
+	  // All code in this class operates with enforced sharing rules.
+
+	  Account a = [SELECT . . . ];
+
+	  public static void m() { . . . }
+	  
+	  static {
+		. . .
+	  }
+
+	  {
+		. . .
+	  }
+
+	  public void c() {
+		. . .
+	  } 
+	}
+
+	public without sharing class CWithout {
+	  // All code in this class ignores sharing rules and operates 
+	  // as if the context user has the Modify All Data permission.
+	  Account a = [SELECT . . . ];
+	  . . .
+
+	  public static void m() {  
+		 . . . 
+
+		// This call into CWith operates with enforced sharing rules
+		// for the context user. When the call finishes, the code execution 
+		// returns to without sharing mode.
+		CWith.m();
+	  }
+
+
+	  public class CInner {
+		// All code in this class executes with the same sharing context
+		// as the code that calls it. 
+		// Inner classes are separate from outer classes.
+		. . .
+
+		// Again, this call into CWith operates with enforced sharing rules
+		// for the context user, regardless of the class that initially called this inner class.
+		// When the call finishes, the code execution returns to the sharing mode that was used to call this inner class.
+		CWith.m();
+	  }
+
+	  public class CInnerWithOut extends CWithout {
+		// All code in this class ignores sharing rules because
+		// this class extends a parent class that ignores sharing rules.
+	  }
+	}
+
+	
+-A calss has access to user but B class doesnot have access to user if he is calling method of B class from A class what will  	happend
+-How to ensure FLS while working with Lightning Component? Will it enforce FLS in lightning component? if not How can be?
+How to ensure field level security while working with lightning components?
+	
+	Enforcing sharing rules by using the with sharing keyword doesn’t enforce the user’s 
+	permissions and field-level security. You must manually enforce CRUD permissions and 
+	field-level security separately in your Apex classes.
+	
+	Object and Field Permissions (CRUD and FLS)
+	Enforce object-level and field-level permissions in your code by explicitly calling the 
+	sObject describe result methods (of Schema.DescribeSObjectResult) and the field describe 
+	result methods (of Schema.DescribeFieldResult) that check the current user’s access 
+	permission levels. In this way, you can verify if the current user has the necessary 
+	permissions, and only if he or she has sufficient permissions, you can then perform a 
+	specific DML operation or a query.
+
+	For example, you can call the isAccessible, isCreateable, or isUpdateable methods of 
+	Schema.DescribeSObjectResult to verify whether the current user has read, create, or 
+	update access to an sObject, respectively. Similarly, Schema.DescribeFieldResult exposes 
+	access control methods that you can call to check the current user’s read, create, or update
+	access for a field.
+	
+	FLS stands for field level security. FLS can be ensure by adding permission checks before 
+	performing DML.
+	Suppose we are performing DML on account object and we want to ensure FLS for name 
+	field then :
+
+	For an upsert DML
+	Account acc = new Account();
+
+	if(Schema.sObjectType.account.fields.name.isCreateable() && 
+	Schema.sObjectType.account.fields.name.isUpdateable()){
+	acc.name = ‘Test’;
+	}
+
+	here it checks weather user has permission to update and create name field or not. 
+	this is how it is ensuring the FLS. similarly we can add checks for some other DML’s.
+
+-if user dont have access to field then how will u show on lightning component to that user
+-what are the security model of saleforce
+-what is profile and permission setting
+-what is role
+-how many ways we can share record
+-what is bound and unbound expression in lightning
+-what are value provider in lightning
+-what is aura:method and events in lightning
+-what is bubble and capture phase
+-what is lightning life cycle
+-what is renderer? why to use it?
+-difference between aura:if and renderer if in lightning
+-governer limits
+-order of execution
+-workflow rule and validation rule
+-in update trigger can we access parent fields
+-what is new and old values in before update trigger
+-what mixed DML exception
+-can we write future method in test class if yes how?
+-how to handle exception and show proper message on lightning componet
+-how to handle exception and show proper message on visualforce page
+-how to call api request from trigger
+-how to handle exception in batch class
+
+    1. Have your batch class implement Database.stateful
+	2. Declare some variables that are initialized in the constructor to 0. 
+		These variables count successes and errors; also a string variable that remembers the records that failed and why (initialized to empty string).
+	3. Use Database.update with allOrNothing = false instead of update within execute(). Interrogate each member of Database.SaveResult[] for isSuccess() and count succcesses and failures in your stateful variables from #2. Log in the stateful variable all the errors (id of record, name of record, and error message/exception)
+	4.In the finish method, send an email to the sysad of count of successes/failures + string variable of all the failures.
+	5.In finish() method, write your batch results to a custom Log__c record(s)
+    example - https://gist.github.com/dirajkumar/8710340
+	
+-if one batch failed what about other batch will it saved to database or not? -> Other will save
+-if batch failed how save partial records it is possible -> already discrete transction 
+	batch will execute independently. does not affect one batch to other
+-how to track of batch of records -> by using database.stateful
+-what is statefull in batch -> It will maintain the state of variable so we can track batches
+-how many time will call START, Excute and finish method in batch
+-if start method failed can run execute and finish method in batch
+- S1
+  insert records
+  S2
+  update records
+  
+  above update records failed what happens
+  
+-what is difference between database.insert and insert
+
+	The optional allOrNone parameter specifies whether the operation allows partial success. 
+	If you specify false for this parameter and a record fails, the remainder of the DML 
+	operation can still succeed. This method returns a result object that can be used to 
+	verify which records succeeded, which failed, and why. If the parameter is not set or 
+	is set true, an exception is thrown if the method is not successful.
+	
+	Using the insert method we can insert the records but if any error occurs in any record 
+	system will throw an error insertion fail and none of the records are inserted.
+
+	If we want to execute partially success of bulk insert operation we will use database .insert.
+	
+	Database.insert(list, false) - if one records fail all other insert success 
+	default it is true - if one record fail throw exception none of records inserted 
+	
+-trigger run in system mode or user mode? -> System Mode
+-for community portal OWD settings are different or same -> option like external access 
+-how to restrict access community user on portal
+-difference between queryLocator and iterator in batch
+	When you’re using a simple query (SELECT) to generate the scope of objects in the batch job, 
+	use the Database.QueryLocator object. If you use a QueryLocator object, the governor limit 
+	for the total number of records retrieved by SOQL queries is bypassed. For example, a batch 
+	Apex job for the Account object can return a QueryLocator for all account records 
+	(up to 50 million records) in an org. Another example is a sharing recalculation for the 
+	Contact object that returns a QueryLocator for all account records in an org.
+	
+	If you use an iterable, the governor limit for the total number of records retrieved by SOQL 
+	queries is still enforced.
+	
+-difference between SOSL and SOQL
+https://developer.salesforce.com/forums/?id=906F00000008lJbIAI
+http://sfdcsrini.blogspot.com/2014/04/what-is-difference-between-soql-and-sosl.html
+
+-diference between future method, Queueable and Batch
+-share button not able to see on record what is the reason?
+-How to avoid recursive trigger in salesforce
+
+	Recursion occurs when same code is executed again and again. It can lead to infinite loop 
+	and which can result to governor limit sometime. Sometime it can also result in unexpected 
+	output.
+	
+	It is very common to have recursion in trigger which can result to unexpected output or 
+	some error. So we should write code in such a way that it does not result to recursion. 
+	But sometime we are left with no choice.
+
+	For example, we may come across a situation where in a trigger we update a field which in 
+	result invoke a workflow. Workflow contains one field update on same object. So trigger will 
+	be executed two times. It can lead us to unexpected output.
+
+	Another example is our trigger fires on after update and it updates some related object and 
+	there is one more trigger on related object which updates child object. So it can result 
+	too infinite loop.
+
+	In RecursiveTriggerHandler class, we have a static variable which is set to true by default.
+	public class ContactTriggerHandler
+	{
+		 public static Boolean isFirstTime = true;
+	}
+	
+	
+	trigger ContactTriggers on Contact (after update)
+	{
+		Set<String> accIdSet = new Set<String>(); 
+		if(ContactTriggerHandler.isFirstTime)
+		{
+			ContactTriggerHandler.isFirstTime = false;
+			 for(Contact conObj : Trigger.New)
+	  {
+				if(conObj.name != 'Test') 
+		 {
+					accIdSet.add(conObj.accountId);
+				}
+			 }
+	   // any code here
+		}
+	}
+	
+	---OR---
+	public class checkRecursive {
+		 public static Set<Id> SetOfIDs = new Set<Id>();
+	}
+	
+	trigger TestTrigger on Account (before insert) {
+		if (Trigger.isAfter && Trigger.isInsert) {
+			List<Account> accList = new List<Account>();
+		  for (Account test: Trigger.new) {
+			  If(!checkRecursive.SetOfIDs.contains(test.Id)){
+				  test.Name = 'helloworld'; 
+				  accList.add(test);
+				checkRecursive.SetOfIDs.add(test.Id);
+			  }
+		  }
+		  insert  accList;
+		}
+	}
+	
+	Static in Salesforce are per transaction, so the value will be true only for the current 
+	transaction. It will be initialized to true for other transactions. Don't think of static 
+	in Java term where static values persist till the class is loaded into memory.  
+
+	Handle recursion - To avoid the recursion on a trigger, make sure your trigger is getting 
+	executed only one time. You may encounter the error : 'Maximum trigger depth exceeded', 
+	if recursion is not handled well.
+	
+-if trigger code coverage is 0% can we deploy to production -> at leaset one line 
+	should be covered for trigger
+-while deployment is it checking overal code coverage or individual class code coverage like 
+overal code coverage is 75%
+ if 2 class have less than 75% code coverage what happens here
+-what option while validating deployment what are the difference between them
+-can inner class varibales make static
+	InnerClass cannot have static members because it belongs to an instance (of OuterClass) 
+	and a static members means that this variable belongs to the entire class and not any 
+	particular instance.
+
+-System.NullPointerException: Attempt to de-reference a null object 
+	This error occurs when user is trying to do some operation in null object.
+-Can I edit Grant Access Usng hierarchies checkbox form standard object 
+	It is not possible
+	Grant Access Usng hierarchies checkbox it is available on OWD
+-FREEZE and deactivate user
+	When we click on the FREEZE button, the user will not be able to login to the application 
+	anymore.
+	Freezing user accounts doesn’t free the user licenses available for use in your organization. 
+	We have to deactivate the user to free the license.
+-How to create master detail relationship if lookup
+-How to create Lookup relationship if master detail
+-What are Governor Limits in Salesforce?
+	In Salesforce, it is the Governor Limits which controls how much data or how many records 
+	you can store in the shared databases. Because Salesforce is based on the concept of 
+	multi-tenant architecture. In simpler words, Salesforce uses a single database to store 
+	the data of multiple clients/ customers. The below image will help you relate to this concept.
+	
+	To make sure no single client monopolizes the shared resources, Salesforce introduced the 
+	concept of Governor Limits which is strictly enforced by the Apex run-time engine.
+-What is Profile?
+	 Profiles determine the level of access a user can have in a Salesforce org.
+-What are the differences between Roles and Profiles?
+	Role:
+	Role controls the visibility and access to the organization’s data at the record level.
+	Roles are optional for users.
+	
+	Profile:
+	Profiles are set of permissions and settings which determines the objects, the fields of 
+	the object, tabs, and apps the user can access.
+	every user must associate with one Profile
+-How to call same @AraEnabled method from different class in lightning component
+
+-pass parameter from visualforce page to lightning component
+	<apex:page standardController="account" >
+		<apex:includeLightning />
+		<div  id="LightningCompContainer" />
+	   
+		<script>
+			$Lightning.use("c:LightningCompForVFAPP", function() {
+				$Lightning.createComponent("c:LightningCompForVF", {
+				},
+				"LightningCompContainer",
+				function(component) {
+				   component.set("v.AccIDFromVfPage",'{!$CurrentPage.parameters.id}');
+				});
+			});
+	 
+		</script>
+	</apex:page>
+	
+- Types of Sandboxes
+	Developer Sandbox
+	Developer pro sandbox
+	Partial data sandbox
+	Full copy sandbox

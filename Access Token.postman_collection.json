@@ -1,0 +1,55 @@
+{
+	"info": {
+		"_postman_id": "8a566b16-5528-48cf-bb3a-374724d0cc25",
+		"name": "Access Token",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "https://gateway-stage.optum.com/auth/oauth2/token?grant_type=client_credentials&client_id=6Yq7LMqe1SdU1uEHHRL3vkcsJywshxEw&client_secret=uSvJc5siTe2COY9VGjT87q2ibab2xl3p",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "'test'"
+				},
+				"url": {
+					"raw": "https://gateway-stage.optum.com/auth/oauth2/token?grant_type=client_credentials&client_id=6Yq7LMqe1SdU1uEHHRL3vkcsJywshxEw&client_secret=uSvJc5siTe2COY9VGjT87q2ibab2xl3p",
+					"protocol": "https",
+					"host": [
+						"gateway-stage",
+						"optum",
+						"com"
+					],
+					"path": [
+						"auth",
+						"oauth2",
+						"token"
+					],
+					"query": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials"
+						},
+						{
+							"key": "client_id",
+							"value": "6Yq7LMqe1SdU1uEHHRL3vkcsJywshxEw"
+						},
+						{
+							"key": "client_secret",
+							"value": "uSvJc5siTe2COY9VGjT87q2ibab2xl3p"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

@@ -1,0 +1,649 @@
+
+	Tell me approach/design - fetch from third party system that has 1000 of records.. client requirement is need to show data using lighting aura/lwc
+	consideting all governer limits and all
+	
+	OWD and profile related query
+	
+	Write a code
+	
+	duplicate check with F+M+L without using coding
+	
+	with sharing and without sharing keyword
+	
+	How will you read the response which is received from integration
+	
+	{
+	"CompanyName":
+		{
+		"name":"Persistent",
+		"Employees":
+			[{
+				"name":"Neeti",
+				"Salary":2000000
+			}]
+		}
+	}
+	
+	what kind of errors you faced while integration
+	
+	How to stop propagation in lightning components
+	
+	You have uncommitted work pending
+	
+	what is difference between controller js and helper js
+	
+	Can lightning component enforce FLS
+	
+	tell me a scenario that cause recusrion 
+	
+	
+	Trigger casetrigger on Case(before update){
+		for(Case c trigger.new){
+			c.description = 'Something';
+		}
+		update c;
+	}
+	
+	LWC MetaFile
+	<isExposed>True</isExposed>
+	<masterLabel>Component Friendly name<masterLabel>
+	<targets>
+		<target>lightning__RecordPage</target>
+		<target>lightning__AppPage</target>
+		<target>lightning__HomePage</target>
+		<target>lightningCommunity__Page</target>
+		<target>lightningCommunity__Default</target>
+	</targets>
+	<targetConfigs targets='lightning__AppPage, lightning__HomePage'>
+		<property name="objectApiName" type="String" datasource="Account,Contact"></property>
+	<targetConfigs>
+	
+	
+	Use Third-Party JavaScript Libraries
+	import { loadScript, loadStyle } from 'lightning/platformResourceLoader';
+	import D3 from '@salesforce/resourceUrl/d3';
+	
+	Promise.all([
+		loadScript(this, D3 + '/d3.v5.min.js'),
+		loadStyle(this, D3 + '/style.css')
+	]).then(() => {
+			this.initializeD3();
+		})
+		
+	---------------------------------------------------------------------------------
+	Permission set group
+	With permission set groups, you can bundle permission sets together based on a job function
+	you can assign permission set insted of muptile assign group permission set at time all.
+	Mute - you can mute permission means delete/remove permission from permission set group but it will reflect in
+		group permission set only not reflect in individual permission set
+		
+	Call Apex method using @wire - Automatically call when reactive property changes and must be cacheable = true because it chache the response
+	call Apex method imperatively - explicitly called apex method not required cacheable
+	
+	- What is use of rendere in aura component?
+	- what id difference between put and patch?
+	- how to implement many to many relatioship?
+	- if you convert master detail to lookup what would be the issues?
+	- OWD for account is private and there are 3 users A user record ownershipt changed to B user then user a loss access to record
+		what is the cause?
+	- Can we call Queable from batch --> yes, we can call Queable from batch and batch from queable
+		There are two ways in salesforce which are used to call the batch class from another batch class are:
+		Using Queueable Apex
+		Using the Finish method of Batch class.
+
+	https://www.emizentech.com/blog/call-batch-apex-from-another-batch-apex.html#:~:text=How%20is%20it%20possible%3F,Finish%20method%20of%20Batch%20class.
+		Queueable Apex:
+			public class ExecuteBatchQueueableJob implements Queueable {
+			public void execute(QueueableContext context) {
+			try{
+			BatchCalledThroughQueueable b = new BatchCalledThroughQueueable();
+			Database.executeBatch(b, 200);
+			}catch(Exception e){
+			System.debug('@@@ Error Message : '+e.getMessage());
+			}
+			}
+			}
+		
+		Batch Apex:
+			global class BatchUpdateAccountRelatedContacts implements Database.Batchable<sObject>, Database.Stateful, Database.AllowsCallouts {
+			String query = 'Select FirstName, LastName, Email, Status__c from Contact WHERE
+			FirstName != null AND LastName != null AND AccountId != null';
+			global Database.QueryLocator start(Database.BatchableContext bc) {
+			// collect the batches of records or objects to be passed to execute
+			Note: Calling Queueable job for calling the next batchfor chaining.
+			System.enqueueJob(new ExecuteBatchQueueableJob());
+			return Database.getQueryLocator(query);
+			}
+			global void execute(Database.BatchableContext bc, List<Contact> records){
+			// process each batch of records
+			for(Contact con : records){
+			con.Status__c = 'Discovery Call Complete';
+			}
+			update records;
+			}
+			global void finish(Database.BatchableContext bc){
+			// execute any post-processing operations
+			}
+			}
+
+	- which method we can call future method
+	- Is there any other ways to callout from trigger other than future method
+		There is only one way to make a callout from a trigger and that is to run it asynchronously by using a future method. 
+		The reason for it is that the apex trigger restricts database transaction until the callout is completed and the time limit 
+		for this is up to 120 seconds.
+		Future methods execute asynchronously i.e. one does not need to wait for a response. Hence, it can be used. 
+		Also remember that in order to make a callout from an apex trigger through future method, we need to enable a callout 
+		from future by passing an extra parameter “Callout=true”.
+		
+		global class MyClass {
+			 @future (callout=true)
+			 Public static void myMethod(String a)
+			 {
+				  //long-running Apex code
+			 }
+		}
+
+	- what are the authentication available in Rest api
+	- salesforce recommend to use configuration insted of code why?
+	- How chain Queable apex?
+		To chain a job to another job, submit the second job from the execute() method of your queueable class. 
+		You can add only one job from an executing job, which means that only one child job can exist for each parent job. 
+		For example, if you have a second class called SecondJob that implements the Queueable interface, you can add this class to 
+		the queue in the execute() method as follows:
+		public class FirstJob implements Queueable {
+			public void execute(QueueableContext context) {
+				// Awesome processing logic here
+				// Chain this job to next job by submitting the next job
+				System.enqueueJob(new SecondJob());
+			}
+		}
+	- What is implicit and explicit apex call
+		Triggers are used for  Implicit invocation of the apex whereas
+		Javascript remoting are used for Explicit invocation of the apex
+		
+	- what is bound and unbound expression
+		- Bound Expression: Bound Expression is represented as {!v.str}. Whenever the value of the string is changed, this expression 
+		will reflect the change and also affect the components where it is used, we can say the value change dynamically through this expression.
+		- Unbound Expression: Unbound Expression is represented as {#v.str}. Whenever the value of the string is changed, this expression 
+		will not reflect the change, we can say the value remains static through this expression.
+
+	- what is abstract class and what is difference between abstract class and wrapper class?
+	- If field is hidden for and if I search in global search will I get result
+	- LWC component should display latest record at top when you add new record
+	- What is dynamic SOQL query 
+		Dynamic SOQL refers to the creation of a SOQL string at run time with Apex code. 
+		Dynamic SOQL enables you to create more flexible applications. For example, 
+		you can create a search based on input from an end user or update records with varying field names.
+		
+		String myTestString = 'TestName';
+		List<sObject> sobjList = Database.query('SELECT Id FROM MyCustomObject__c WHERE Name = :myTestString');
+
+	- what is SOQL Injection
+		This can occur in Apex code whenever your application relies on end user input to construct a dynamic 
+		SOQL statement and you do not handle the input properly.
+		
+		To prevent SOQL injection, use the escapeSingleQuotes method.
+		This method adds the escape character (\) to all single quotation marks in a string that is passed in from a user. 
+		The method ensures that all single quotation marks are treated as enclosing strings, instead of database commands.
+		
+	- How to hard delete record using apex? Records should not be in recyclebin.
+		We can hard delete record or list of records using emptyRecycleBin() function in apex. 
+		Pass the record or record list to emptyRecycleBin() to delete it from Recycle Bin.
+		
+		Contact con = new Contact(Id = '09k110000O5abc');
+		Database.emptyRecycleBin(con);
+		
+	- trigger best practice
+		1) One Trigger Per Object
+		A single Apex Trigger is all you need for one particular object. If you develop multiple Triggers for a single object, you have no 
+		way of controlling the order of execution if those Triggers can run in the same contexts
+
+		2) Logic-less Triggers
+		If you write methods in your Triggers, those can’t be exposed for test purposes. You also can’t expose logic to be re-used anywhere else in your org.
+
+		3) Context-Specific Handler Methods
+		Create context-specific handler methods in Trigger handlers
+
+		4) Bulkify your Code
+		Bulkifying Apex code refers to the concept of making sure the code properly handles more than one record at a time.
+
+		5) Avoid SOQL Queries or DML statements inside FOR Loops
+		An individual Apex request gets a maximum of 100 SOQL queries before exceeding that governor limit. So if this trigger is invoked by 
+		a batch of more than 100 Account records, the governor limit will throw a runtime exception
+
+		6) Using Collections, Streamlining Queries, and Efficient For Loops
+		It is important to use Apex Collections to efficiently query data and store the data in memory. A combination of using collections 
+		and streamlining SOQL queries can substantially help writing efficient Apex code and avoid governor limits
+		
+		7) Querying Large Data Sets
+		The total number of records that can be returned by SOQL queries in a request is 50,000. If returning a large set of queries causes 
+		you to exceed your heap limit, then a SOQL query for loop must be used instead. It can process multiple batches of records through 
+		the use of internal calls to query and queryMore
+
+		8) Use @future Appropriately
+		It is critical to write your Apex code to efficiently handle bulk or many records at a time. This is also true for asynchronous 
+		Apex methods (those annotated with the @future keyword). The differences between synchronous and asynchronous Apex can be found
+		Here is a list of governor limits specific to the @future annotation:
+		- No more than 50 method calls per Apex invocation
+		- No more than 200 method calls per Salesforce license per 24 hours
+		- The maximum number of future method invocations per a 24-hour period is 250,000
+		- The parameters specified must be primitive dataypes, arrays of primitive datatypes, or collections of primitive datatypes.
+		- Methods with the future annotation cannot take sObjects or objects as arguments.
+
+		9) Avoid Hardcoding IDs
+		When deploying Apex code between sandbox and production environments, or installing Force.com AppExchange packages, it is essential 
+		to avoid hardcoding IDs in the Apex code. By doing so, if the record IDs change between environments, the logic can dynamically 
+		identify the proper data to operate against and not fail.
+
+	- How many level deep can be nested SOQL query --> only 1 level deep in nested query possible
+		if you try more than 1 level deep you will get below error
+		SOQL statements cannot query aggregate relationships more than 1 level away from the root entity object.
+		https://www.cloudgiants.com/blog-detailed/2016/8/2/apex-development-querying-for-child-records-more-than-1-level-deep-a-json-workaround#:~:text=ONLY%201%20LEVEL%20DEEP%20IN%20NESTED%20QUERIES&text=SOQL%20statements%20cannot%20query%20aggregate,from%20the%20root%20entity%20object.
+	
+	- maximum trigger depth exceeded error, what is this error?
+		Maximum Trigger Depth Exceeded Error Salesforce occurs mainly due to recursion in the trigger.
+		Recursion occurs when the same code is executed again and again.
+		It can lead to an infinite loop and which can result in governor limit sometime.
+		
+		we are checking if contact last name is not equal to SFDC, then we are preparing set of account id. 
+		Now let’s assume that we are updating account record in this trigger and there is one more trigger which updates 
+		contact record when accounts are updated
+		
+		To avoid these kind of situation we can use public static boolean variable
+		
+	- what are the types of relationship in salesforce
+	-->     - Master-detail relationship.
+			- Lookup relationship.
+			- Self-relationship.
+			- External lookup relationship.
+			- Indirect lookup relationship.
+			- Many-to-many relationship (junction object)
+			- Hierarchical relationship
+	- Is it possible to call a batch apex from the trigger? --> yes
+		Yes it is possible, we can call a batch apex from trigger but we should always keep in mind that 
+		we should not call batch apex from trigger each time as this will exceeds the governor limit this is 
+		because of the reason that we can only have 5 apex jobs queued or executing at a time.
+		
+		---Trigger---
+		trigger maintrigger on Contact (after insert) {
+			Map<id,contact> IdContactMap=new Map<Id,contact>();
+			for(Contact con:trigger.new){
+				if(con.email!=Null){
+					IdContactMap.put(con.id,con);
+				}
+			}
+			if(IdContactMap.size() > 0){
+				database.executeBatch(new MailToNewContact(IdContactMap)); // Calling batch class.
+			}
+
+		}
+		
+		---Batch Apex---
+		global class MailToNewContact implements Database.Batchable<sObject>
+		{
+			Map<id,contact> IdContactMapBatch=new Map<id,contact>();
+			global MailToNewContact(Map<id,contact> IdContactMap){
+				IdContactMapBatch=IdContactMap;
+			}
+			global Database.QueryLocator start(Database.BatchableContext BC)
+			{
+				return Database.getQueryLocator([SELECT id,firstname,email from contact where id in:IdContactMapBatch.keySet()]);
+			}
+			global void execute(Database.BatchableContext BC, List<Contact> scope) {     
+				for(Contact con : scope)
+				{    
+				   Messaging.SingleEmailMessage email=new Messaging.SingleEmailMessage();
+					   email.setToAddresses(new string[] {con.email});
+					   email.setSubject('Welcome Mail');
+					   email.setPlainTextBody('Welcome Your Contact Is Created Successfully In Salesforce');
+				   Messaging.sendEmail(new Messaging.SingleEmailMessage[] {email});
+				}
+			}
+			global void finish(Database.BatchableContext BC)
+			{
+			}
+		}
+		
+	- How to check batch job.. apex jobqueu have most 5 active jobs only
+	- How to check SOQL limit and DML limit?
+		Apex has a System class called Limits that lets you output debug messages for each governor limit.
+		There are two versions of every method: the first returns the amount of the resource that has been used in the current context, 
+		while the second version contains the word limit and returns the total amount of the resource that is available for that context.
+		Limits class
+		LIMITS
+
+		System.debug('Total Number of SOQL Queries allowed in this apex code context: ' + Limits.getLimitQueries());
+		System.debug('Total Number of records that can be queried in this apex code context: ' + Limits.getLimitDmlRows());
+		System.debug('Total Number of DML statements allowed in this apex code context: ' + Limits.getLimitDmlStatements() );
+		System.debug('Total Number of script statements allowed in this apex code context: ' + Limits.getLimitScriptStatements());
+
+		USAGE
+		System.debug('1.Number of Queries used in this apex code so far: ' + Limits.getQueries());
+		System.debug('2.Number of rows queried in this apex code so far: ' + Limits.getDmlRows());
+		System.debug('3. Number of script statements used so far : ' + Limits.getDmlStatements());
+		System.debug('4.Number of Queries used in this apex code so far: ' + Limits.getQueries());
+		System.debug('5.Number of rows queried in this apex code so far: ' + Limits.getDmlRows());
+
+	- What is getCallback in lightning?
+		Use $A.getCallback() to wrap any code that modifies a component outside the normal rerendering lifecycle, such as in a setTimeout() call. 
+		The $A.getCallback() call ensures that the framework rerenders the modified component and processes any enqueued actions.
+		
+		({
+			doInit : function(component, event, helper) {
+				//execute again after 5 sec each
+				window.setInterval(
+					$A.getCallback(function() { 
+						helper.increment(component,helper);
+					}), 5000
+				); 
+			}
+		})
+		
+	- What is use of promise in javascript?
+	- which interface need to implement lighting compoent to use in FLOW --> lightning:availableForFlowScreens
+	- Contact trigger to limit an account to not have more than 2 contacts
+	
+	trigger BlockMoreThan2ContactOnAccount on Contact (after insert, after update, after undelete) {
+	  Set<Id> accountIds = new Set<Id>();
+	  for(Contact record: Trigger.new) {
+		accountIds.add(record.AccountId);
+	  }
+	  accountIds.remove(null);
+	  Set<Id> morethan2Contacts = new Map<Id, AggregateResult>([
+		SELECT AccountId Id
+		FROM Contact
+		WHERE AccountId = :accountIds
+		GROUP BY AccountId
+		HAVING COUNT(Id) > 2]).keySet();
+	  for(Contact record: Trigger.new) {
+		if(moreThan2Contacts.contains(record.AccountId)) {
+		  record.AccountId.addError('You may not have more than 2 contacts per account.');
+		}
+	  }
+	}
+
+	- how to avoid duplicate account name in write a query
+	- I want to send mail to contact email id on birthday... how to send that... write query
+	- Field history tracking max field allowed 20 if client requirement want more fields => create one more object to store those changes using trigger
+	- Can we get old and new values in flow on record changes
+	- validation rules skip for 100 users how can you do that --> permission set
+	- Best Practices for LWC
+		https://developer.salesforce.com/blogs/2020/06/lightning-web-components-performance-best-practices.html
+	- Best Practices for Aura
+		https://developer.salesforce.com/blogs/developer-relations/2017/04/lightning-components-performance-best-practices.html
+	- Best Practices for Test class
+		https://www.apexhours.com/apex-test-class-best-practices/
+	
+	-
+	Set<Id> morethan2Contacts = new Map<Id, AggregateResult>([
+    SELECT AccountId Id
+    FROM Contact
+    WHERE AccountId = :accountIds
+    GROUP BY AccountId
+    HAVING COUNT(Id) > 2]).keySet();
+	========================================================
+	Best practices javascript - LWC
+	https://github.com/SalesforceArtist/javascript
+	
+	public property --> Its read only in child component that means we can not change value of public property in child component (property where it declared)
+	 the value of this property only can supplied from parent component. you can set default value.
+	 public properties are reactive. Updating a new value in parent component automatically updates child component.
+	 
+	Public Boolean Property --> 
+		- you have to set boolean value as false
+		- if you include attribute property in html tag then only it will act as true value else false
+	
+	Call public method of child component from parent component
+		- declare public method in child component
+		- On parent component first call child component in markup
+		- then On parent component first fetch child markup like below
+		const childcomponent = this.template.querySelector('c-child-component-name');
+		childcomponent.childpublicMethodName();
+	
+	- We can include lightning web component in Lightinig Aura component but vice versa not possible
+	- Use camelCase when you include lightning web component inside an Aura component.
+	
+	Why LWC
+	In 2014 lighting component launched at that time web standards had limited functionality and varioud framework came to fulfil the gaps like
+		ReactJs,CommonJs etc.
+	Fast forward few year later Web standard has rich set of functionalities supported by native browsers
+		Templating, Shadow dom, Custom Elements
+		more standards less framework
+	Four Pillars of HTML Web Component
+		1. Import
+		2. Template
+		3. Custom Elements
+		4. Shadow DOM
+		
+	let shadowRoot = this.attachShadow({mode: 'open'});
+	shadowRoot.innerHTML = innerHTML;
+	--------------------------------------------
+	- Renderer resource in Aura Component:
+		Renderer service in lightning component bundle modify the DOM elements which is created by framework for a component. 
+		We use custom renderer to change or override the  default rendering behaviour of the component
+		- Renderer will calls the below base functions
+		
+			- render() ---> component insitited
+			- afterRender() -> after render (interact with DOM element)
+			- rerender() ----> if there is any data change then each time rerender() get called (we do the custom rerendering)
+			- unrender() --> when lifspan of the component is finished unrender() will executed
+	
+		rendering service create and manage the DOM element of components
+		sometime we want to modify DOM element we use rendere resocource
+		
+		1). render():
+			It returns DOM node, an array of DOM node or nothing. To override the default rendering process we need to extend default 
+			render by calling superRender() method then write custom code.Example:
+		2). rerender():
+			It allows the component to update themselves, when other component updates since they were last rendered. 
+			It doesn’t return any value. It automatically called when data is updated in the component. 
+			Call superRerender() to chain rerendering to the components in body attribute.
+		3). afterRender():
+			It allows you to interact with DOM tree after rendering the DOM elements. It doesn’t return a value. 
+			Call superAfterRender() before your custom code to extend the default afterRender().
+		4). unrender():
+			It deletes all DOM nodes rendered by component’s render function. It call by framework when components is being destroyed.
+			
+		=====================================================================================
+		Omni-Channel: 
+			- Omni-Channel routes work requests to the most available and qualified support agents in the console. 
+				You can also provide real-time operational intelligence to support supervisors with Omni-Channel Supervisor.
+			
+			Omni-Channel for Administrators
+			- Route any type of incoming work item to the most qualified, available support agents in your call center. 
+				Omni-Channel integrates seamlessly into the console in both Salesforce Classic and Lightning Experience.
+			
+			Omni-Channel Supervisor
+			- Use Omni-Channel Supervisor to monitor agent workloads and the status of work items that are routed by Omni-Channel. 
+				Agents can raise flags on work items when they require assistance from a supervisor. Supervisors can monitor Service Cloud 
+				Voice transcripts and chat messages between agents and customers, and send helpful messages that only the support agent sees. 
+				Supervisors can also respond to incoming support requests by changing queues as needed and can update agent skills quickly.
+			
+			--------------------------
+			- Omni-Channel is a tool that sits inside of either the Sales or Service Console that, once enabled and configured, 
+			automatically pushes work to your users in real time.
+			- For example, one can configure routing rules to assign cases to agents through Omni-Channel or configure routing rules 
+			to assign leads to sales people. Omni-Channel currently supports leads, cases, chats, SOS video calls, social posts, orders, 
+			and custom objects with the goal to be getting the right work to the right person who has the capacity to help.
+		
+		Service Cloud:
+			Customer can contact your company by using below channels:
+			
+			- Give your customers the information and support they need with Service Cloud—the customer service 
+				and support application that you can customize to fit your business needs.
+			
+			- With Service Cloud, you can choose how your customers reach you—by email, phone, social media, Experience Cloud sites, chat, text, and more. 
+				To keep your customers satisfied when they do contact you, Service Cloud makes sure that your agents have all the tools they need to 
+				respond efficiently to customer questions and requests. Service Cloud boosts agent productivity, allows communication on multiple channels, 
+				and supports solving issues in the field
+			
+			1. Phone --> Customers call you on phone --> Setup Open CTI
+			2. Email --> Customers email your company --> Setup Email-to-Case
+			3. Web Forms --> Customers fill out a form on your website --> Setup Web-to-Case
+			4. Web Chat --> Customers chat with agents on your website --> Setup Live Agent with Snap-in Chat
+			5. Mobile Apps --> Customers on their mobile devices chat with agents on your mobile app --> Setup Snap-in for Mobile Apps
+			6. Text Messaging --> Customers send text messages from messaging apps to your company and agent can reply from the service console --> Setup LiveMessage
+			7. Social Media --> Customers tweet at your company on Twitter, post on your company's Facebook page or @mention your company
+								on other social media platforms --> Setup Social Customer Service
+								
+=====================================================================
+	- checkbox
+	this.areDetailsVisible = event.target.checked;
+	
+	- binding and getting values
+	import { LightningElement, track } from 'lwc';
+
+	export default class HelloExpressionsTrack extends LightningElement {
+		@track fullName = { firstName: '', lastName: '' };
+
+		handleChange(event) {
+			const field = event.target.name;
+			if (field === 'firstName') {
+				this.fullName.firstName = event.target.value;
+			} else if (field === 'lastName') {
+				this.fullName.lastName = event.target.value;
+			}
+		}
+
+		get uppercasedFullName() {
+			return `${this.fullName.firstName} ${this.fullName.lastName}`
+				.trim()
+				.toUpperCase();
+		}
+	}
+	
+	<template>
+		<ui-card title="HelloExpressionsTrack">
+			<div>
+				<ui-input
+					name="firstName"
+					label="First Name"
+					onchange={handleChange}
+				></ui-input>
+				<ui-input
+					name="lastName"
+					label="Last Name"
+					onchange={handleChange}
+				></ui-input>
+				<p class="margin-top-medium">
+					Uppercased Full Name: {uppercasedFullName}
+				</p>
+			</div>
+		</ui-card>
+	</template>
+	----------------------------------
+	<ui-input
+                type="checkbox"
+                label="Show details"
+                onchange={handleChange}
+            ></ui-input>
+
+            <div class="details">
+                <template if:true={areDetailsVisible}>
+                    These are the details!
+                </template>
+                <template if:false={areDetailsVisible}>
+                    Not showing details.
+                </template>
+            </div>
+        </div>
+		
+	areDetailsVisible = false;
+
+    handleChange(event) {
+        this.areDetailsVisible = event.target.checked;
+    }
+--------------------------------------------------
+
+//To prevent duplicate contact record by email
+
+trigger ContactTrigger on Contact (before insert, before update, after undelete) {
+    
+    /*for( Contact con : Trigger.New) {
+        if(con.Phone != null) {
+            //VerifyPhoneNumbers.doFuture(con.Id);
+            VerifyPhoneNumbers.sobjectAsParam(JSON.serialize(con));
+        }
+    }*/
+    // Get a list of all new records
+    //Trigger.New // List<sObject> => List<Contact>
+    List<Contact> contactList = new List<Contact>();
+    Set<String> newEmailSet = new Set<String>();
+    Set<String> existingEmailSet = new Set<String>();
+    if (Trigger.isBefore && ( Trigger.isInsert || Trigger.isUpdate )) {
+        contactList = Trigger.New;
+    } 
+    if ( Trigger.IsAfter && Trigger.isUndelete ) {
+        contactList = Trigger.New;
+    }
+    // Step 2 - Add new emails into a Set
+    for ( Contact con : contactList ) {
+        if ( con.Email != null ) {
+            newEmailSet.add(con.Email);
+        }
+    }
+    // Step 3 - Make a SQOL on Contact Object to get the Duplicate Records 
+    // 3 New . Contact (test@gmail.com, test1@gmail.com, test2@gmail.com)
+    // 10000 Contact - 
+    // 0 Records
+    List<Contact> existingContactList = [Select Id, Email From Contact 
+                                         Where Email IN: newEmailSet AND Email != null];
+    // Step 4
+    for (Contact con : existingContactList ) {
+        existingEmailSet.add(con.Email);
+    }
+    
+    // Step 5 
+    
+    for ( Contact con : contactList ) { // the list we are inserting or updating
+        if ( existingEmailSet.contains( con.Email ) ) {
+            con.Email.AddError(' Duplicate Email is not Allowed ');
+        } else {
+            existingEmailSet.add(con.Email);
+        }
+    }
+    // existingEmailSet = {};
+    // test12@gmail.com
+    // test12@gmail.com
+    // existingEmailSet.contains( 'test12@gmail.com' ) => No
+    // existingEmailSet = {'test12@gmail.com'}
+    // existingEmailSet.contains( 'test12@gmail.com' ) = YES
+    //
+    //
+}
+
+-------------------------------------------------------
+//Prevent duplicate account record by name
+trigger AccountDuplicate on Account (before insert)
+{
+
+	Set<String> setName = new Set<String>();
+	For(Account acc : trigger.new)
+	{
+		setName.add(acc.name);
+	}
+	
+	if(setName.size() > 0 )
+	{
+		List<Account> lstAccount = [select name ,id from account where name in :setName ];
+		
+		Map<String ,Account> mapNameWiseAccount = new Map<String,Account>();
+		For(Account acc: lstAccount)
+		{
+			mapNameWiseAccount.put(acc.name ,acc);
+		}
+		
+		For(Account acc : trigger.new)
+		{
+			if(mapNameWiseAccount.containsKey(acc.name))
+			{
+				acc.Name.addError('Name already Exist ');
+			}
+		}
+		
+	}
+}
+
+========================================================
+
+	
